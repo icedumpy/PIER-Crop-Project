@@ -1,0 +1,3 @@
+gsutil cp -n -z "tif" -r gs://crop-s1/processed_data_warp/* G:\!PIER\!FROM_2TB\Complete_VV_separate
+
+#gsutil cp -n -z "tif" -r gs://crop-s1/crop-s1/processed_data_warp/* G:\!PIER\!FROM_2TB\Complete_VV_separate
