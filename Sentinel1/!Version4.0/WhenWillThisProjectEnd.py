@@ -53,7 +53,20 @@ strip_id = "402"
 df_mapping, list_p = load_mapping(root_df_mapping, strip_id = strip_id)
 df_mapping = df_mapping.loc[(df_mapping["tier"] == 1) & df_mapping["is_within"]]
 #%%
-for p in list_p[0::2]:
+# Set dtypes
+dict_dtypes = {f"t{i}":"float32" for i in range(31)}
+dict_dtypes["new_polygon_id"] = "int32"
+dict_dtypes["PLANT_PROVINCE_CODE"] = "int32"
+dict_dtypes["PLANT_AMPHUR_CODE"] = "int32"
+dict_dtypes["PLANT_TAMBON_CODE"] = "int32"
+dict_dtypes["ext_act_id"] = "int64"
+dict_dtypes["BREED_CODE"] = "int32"
+dict_dtypes["loss_ratio"] = "float32"
+dict_dtypes["polygon_area_in_square_m"] = "float32"
+dict_dtypes["row"] = "int32"
+dict_dtypes["col"] = "int32"
+#%%
+for p in list_p:
     print(strip_id, p)
     path_save = os.path.join(root_df_temporal, f"df_s1ab_temporal_p{p}_s{strip_id}.parquet")
     if os.path.exists(path_save):
@@ -122,10 +135,6 @@ for p in list_p[0::2]:
             pass
     
     df = pd.concat(list_df, ignore_index=True)
+    df = df.astype(dict_dtypes)
+    
     df.to_parquet(path_save)
-
-
-
-
-
-
