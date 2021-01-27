@@ -122,7 +122,7 @@ def get_anchor_date_for_nonflood(list_plant_date, raster_last_date, period, repe
         try:
             random_date = timedelta(np.random.randint(0, min(180, (raster_last_date-gap-plant_date).days+1)))
         except:
-            random_date = timedelta(min(120, (raster_last_date-gap-plant_date).days+1))
+            random_date = timedelta(min(180, (raster_last_date-gap-plant_date).days+1))
         anchor_date.append(plant_date + random_date)
     return anchor_date
 

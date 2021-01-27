@@ -45,8 +45,7 @@ df_content = df_content.set_index("index")
 df_content.loc[df_content.index[0]-1, ["start", "stop"]] = [df_content.loc[df_content.index[0], "start"]-datetime.timedelta(days=6), df_content.loc[df_content.index[0], "start"]]
 df_content = df_content.sort_index()
 #%%
-df_vew_batch = df_vew.loc[df_vew["loss_ratio"] >= 0.8].sample(n=10)
-#%%
+df_vew_batch = df_vew.loc[df_vew["loss_ratio"] >= 0.8].sample(n=1)
 list_pred = []
 for row in df_vew_batch.itertuples():
     try:
@@ -91,4 +90,3 @@ for row in df_vew_batch.itertuples():
 arr = np.vstack(list_pred)
 plt.plot(arr.T)
 #%%
-plt.plot(arr[1])

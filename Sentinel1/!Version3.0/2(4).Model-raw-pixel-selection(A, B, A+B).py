@@ -104,7 +104,7 @@ columns_pixel_values = df_flood.columns[df_flood.columns.str.match(r"^t\d+$")].t
 
 # df_flood[columns_pixel_values] = 10*np.log10(df_flood[columns_pixel_values])
 # df_nonflood[columns_pixel_values] = 10*np.log10(df_nonflood[columns_pixel_values])
-#%% Select a new proper flood date
+#%% Select a new proper flood date : Route 1
 window_size = 3
 index_middle = len(columns_pixel_values)//2
 list_index_flood = get_better_flood_date(df_flood[columns_pixel_values].values, 
@@ -136,13 +136,22 @@ df_flood[columns_pixel_values_new] = list_flood_values
 age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days.values.reshape(-1, 1), bins=bins, right=True)
 df_nonflood[columns_pixel_values_new] = np.hstack([df_nonflood[["t3", "t4", "t5"]].values, age])
 df_nonflood = df_nonflood.drop(columns=list(set(columns_pixel_values)-set(columns_pixel_values_new)))
+
+#%% Route 2
+# bins = [0, 40, 90]
+# columns_pixel_values_new = ["t3", "t4", "t5"]
+
+# df_flood = df_flood.drop(columns=["t1", "t2", "t6", "t7", "t8"])
+# df_nonflood = df_nonflood.drop(columns=["t1", "t2", "t6", "t7", "t8"])
+
+# df_flood = df_flood.assign(age = np.digitize((df_flood["ANCHOR_DATE"] - df_flood["final_plant_date"]).dt.days, bins=bins))
+# df_nonflood = df_nonflood.assign(age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days, bins=bins))
 #%%
 # =============================================================================
 # Create train, test sample data
 # =============================================================================
 df_sample = pd.concat([df_flood, df_nonflood])
 df_sample = df_sample.loc[df_sample["age"] > 0]
-
 
 # Add month
 # df_sample = df_sample.assign(month=df_sample["ANCHOR_DATE"].dt.month)
