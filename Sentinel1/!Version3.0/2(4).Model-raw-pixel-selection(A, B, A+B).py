@@ -184,10 +184,10 @@ df_test = df_sample_drop_dup.loc[((df_sample_drop_dup["ext_act_id"]%10).isin([8,
 # if (len(df_train) == 0) or (len(df_test) == 0):
 #     continue
 # =============================================================================
-# Fit model (pixel-level model) ♣
+# Fit model (pixel-level model) 
 # =============================================================================
 model1 = RandomForestClassifier(min_samples_leaf=5, max_depth=10, min_samples_split=10,
-                               verbose=0, n_jobs=-1, random_state=42)
+                                verbose=0, n_jobs=-1, random_state=42)
 model1.fit(df_train[columns_pixel_values_new].values, df_train["label"].values)
 
 plt.close('all')

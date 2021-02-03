@@ -66,7 +66,7 @@ dict_dtypes["polygon_area_in_square_m"] = "float32"
 dict_dtypes["row"] = "int32"
 dict_dtypes["col"] = "int32"
 #%%
-for p in list_p[1::2]:
+for p in list_p:
     print(strip_id, p)
     path_save = os.path.join(root_df_temporal, f"df_s1ab_temporal_p{p}_s{strip_id}.parquet")
     if os.path.exists(path_save):

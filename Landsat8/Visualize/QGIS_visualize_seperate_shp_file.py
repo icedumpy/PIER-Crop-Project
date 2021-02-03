@@ -4,8 +4,10 @@ import pandas as pd
 from icedumpy.geo_tools import convert_to_geodataframe
 from multiprocessing import Pool
 
-root = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged"
-root_save = r"F:\CROP-PIER\CROP-WORK\vew_shp"
+# root = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged"
+# root_save = r"F:\CROP-PIER\CROP-WORK\vew_shp"
+root = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_2020"
+root_save = r"F:\CROP-PIER\CROP-WORK\vew_shp_2020"
 new_columns = ['new_pol_id', 'AREA_WA',
                'plant_date', 'START_DATE', 'DANG_NAME',
                'D_AREA_WA', "loss_ratio", 'geometry']
