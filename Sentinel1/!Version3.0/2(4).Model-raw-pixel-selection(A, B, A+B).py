@@ -66,11 +66,10 @@ def create_polygon_level_train_test_df(df_sample_drop_dup, model, columns_pixel_
         df = df_sample_drop_dup.loc[((df_sample_drop_dup["ext_act_id"]%10).isin([8, 9]))]
         
     df = df.assign(predict_proba = model.predict_proba(df[columns_pixel_values])[:, 1])
-    df = df.groupby(["ext_act_id"]).agg({"predict_proba":["mean", "std"], "loss_ratio":"mean"})
-    # df = df.dropna()
+    df = df.groupby(["ext_act_id"]).agg({"predict_proba":["mean", "std"], "age":"mean", "loss_ratio":"mean"})
     df = df.fillna(0)
-    df.columns = df.columns.droplevel()
-    df.columns = ["mean_predict_proba", "std_predict_proba", "loss_ratio"]
+    # df.columns = df.columns.droplevel()
+    df.columns = ["mean_predict_proba", "std_predict_proba", "age", "loss_ratio"]
     
     df.loc[df["loss_ratio"] == 0.00, "bin"] = 0
     df.loc[(df["loss_ratio"] > 0.00) & (df["loss_ratio"] <= 0.25), "bin"] = 1
@@ -105,47 +104,46 @@ columns_pixel_values = df_flood.columns[df_flood.columns.str.match(r"^t\d+$")].t
 # df_flood[columns_pixel_values] = 10*np.log10(df_flood[columns_pixel_values])
 # df_nonflood[columns_pixel_values] = 10*np.log10(df_nonflood[columns_pixel_values])
 #%% Select a new proper flood date : Route 1
-window_size = 3
-index_middle = len(columns_pixel_values)//2
-list_index_flood = get_better_flood_date(df_flood[columns_pixel_values].values, 
-                                         df_flood[columns_pixel_values].diff(axis=1).values, 
-                                         window_size, index_middle)
+# window_size = 3
+# index_middle = len(columns_pixel_values)//2
+# list_index_flood = get_better_flood_date(df_flood[columns_pixel_values].values, 
+#                                          df_flood[columns_pixel_values].diff(axis=1).values, 
+#                                          window_size, index_middle)
 
-arr = df_flood[columns_pixel_values].values
-age = (df_flood["ANCHOR_DATE"] - df_flood["final_plant_date"]).dt.days.values
-age = age-6*(np.array(list_index_flood)-4)
-df_flood["ANCHOR_DATE"] = df_flood["ANCHOR_DATE"]+np.array([datetime.timedelta(int(item)) for item in 6*(np.array(list_index_flood)-4)])
-# Digitize 1
-# [0, 40] = 1
-# (40, 90] = 2
-# [90, inf ) = 3
-bins = [0, 40, 90]
-
-age = np.digitize(age, bins=bins, right=True)
-list_flood_values = []
-for i in tqdm(range(len(df_flood))):
-    list_flood_values.append(np.hstack([arr[i, list_index_flood[i]-2:list_index_flood[i]+1], age[i]]))
-del arr
-
-columns_pixel_values_new = [f"t{i}" for i in range(1, window_size+1)] + ["age"]
-df_flood = df_flood.drop(columns=columns_pixel_values)
-df_flood[columns_pixel_values_new] = list_flood_values
-
-# Digitize 2
-# age = (df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days.values.reshape(-1, 1)
-age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days.values.reshape(-1, 1), bins=bins, right=True)
-df_nonflood[columns_pixel_values_new] = np.hstack([df_nonflood[["t3", "t4", "t5"]].values, age])
-df_nonflood = df_nonflood.drop(columns=list(set(columns_pixel_values)-set(columns_pixel_values_new)))
-
-#%% Route 2
+# arr = df_flood[columns_pixel_values].values
+# age = (df_flood["ANCHOR_DATE"] - df_flood["final_plant_date"]).dt.days.values
+# age = age-6*(np.array(list_index_flood)-4)
+# df_flood["ANCHOR_DATE"] = df_flood["ANCHOR_DATE"]+np.array([datetime.timedelta(int(item)) for item in 6*(np.array(list_index_flood)-4)])
+# # Digitize 1
+# # [0, 40] = 1
+# # (40, 90] = 2
+# # [90, inf ) = 3
 # bins = [0, 40, 90]
-# columns_pixel_values_new = ["t3", "t4", "t5"]
 
-# df_flood = df_flood.drop(columns=["t1", "t2", "t6", "t7", "t8"])
-# df_nonflood = df_nonflood.drop(columns=["t1", "t2", "t6", "t7", "t8"])
+# age = np.digitize(age, bins=bins, right=True)
+# list_flood_values = []
+# for i in tqdm(range(len(df_flood))):
+#     list_flood_values.append(np.hstack([arr[i, list_index_flood[i]-2:list_index_flood[i]+1], age[i]]))
+# del arr
 
-# df_flood = df_flood.assign(age = np.digitize((df_flood["ANCHOR_DATE"] - df_flood["final_plant_date"]).dt.days, bins=bins))
-# df_nonflood = df_nonflood.assign(age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days, bins=bins))
+# columns_pixel_values_new = [f"t{i}" for i in range(1, window_size+1)] + ["age"]
+# df_flood = df_flood.drop(columns=columns_pixel_values)
+# df_flood[columns_pixel_values_new] = list_flood_values
+
+# # Digitize 2
+# # age = (df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days.values.reshape(-1, 1)
+# age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days.values.reshape(-1, 1), bins=bins, right=True)
+# df_nonflood[columns_pixel_values_new] = np.hstack([df_nonflood[["t3", "t4", "t5"]].values, age])
+# df_nonflood = df_nonflood.drop(columns=list(set(columns_pixel_values)-set(columns_pixel_values_new)))
+#%% Route 2
+bins = [0, 40, 90]
+columns_pixel_values_new = ["t3", "t4", "t5", "t6", "age"]
+
+df_flood = df_flood.drop(columns=["t1", "t2", "t7", "t8"])
+df_nonflood = df_nonflood.drop(columns=["t1", "t2", "t7", "t8"])
+
+df_flood = df_flood.assign(age = np.digitize((df_flood["ANCHOR_DATE"] - df_flood["final_plant_date"]).dt.days, bins=bins))
+df_nonflood = df_nonflood.assign(age = np.digitize((df_nonflood["ANCHOR_DATE"] - df_nonflood["final_plant_date"]).dt.days, bins=bins))
 #%%
 # =============================================================================
 # Create train, test sample data
@@ -205,10 +203,10 @@ plt.close('all')
 df_train = create_polygon_level_train_test_df(df_sample_drop_dup, model1, columns_pixel_values=columns_pixel_values_new, train_or_test="train")
 df_test  = create_polygon_level_train_test_df(df_sample_drop_dup, model1, columns_pixel_values=columns_pixel_values_new, train_or_test="test")
 #%% Classifier
-x_train = df_train[["mean_predict_proba", "std_predict_proba"]].values
+x_train = df_train[["mean_predict_proba", "std_predict_proba", "age"]].values
 y_train = df_train[["bin"]].values.reshape(-1)
 
-x_test = df_test[["mean_predict_proba", "std_predict_proba"]].values
+x_test = df_test[["mean_predict_proba", "std_predict_proba", "age"]].values
 y_test = df_test[["bin"]].values.reshape(-1)
 #%%
 model2 = RandomForestClassifier(max_depth=10, max_features='sqrt', min_samples_leaf=4, min_samples_split=5, n_estimators=25)
@@ -236,16 +234,15 @@ save_model(path_model1, model1)
 save_model(path_model2, model2)
 #%%
                                     # T-2,        T-1,          T, AGE
-model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 1  ]).reshape(1, -1))[-1]
-model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 2  ]).reshape(1, -1))[-1]
-model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 3  ]).reshape(1, -1))[-1]
+# model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 1  ]).reshape(1, -1))[-1]
+# model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 2  ]).reshape(1, -1))[-1]
+# model1.predict_proba(np.array([0.06258286, 0.07668982, 0.07199386, 3  ]).reshape(1, -1))[-1]
 #%%
 
 
 
 
-
-
+# model1.predict_proba(np.array([0.0974395, 0.13226882, 0.10664584, ]).reshape(1, -1))[-1]
 
 
 

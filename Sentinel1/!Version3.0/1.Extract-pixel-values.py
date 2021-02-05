@@ -451,12 +451,11 @@ def main_each_strip_id(strip_id):
 if __name__=="__main__":
     # Everything here is global too
     # LIST_STRIP_ID = os.listdir(os.path.join(ROOT_RASTER, SAT_TYPE))
-    # LIST_STRIP_ID = ["302", "303", "304", "305", "306", "401", "402", "403"]
+    LIST_STRIP_ID = ["302", "303", "304", "305", "306", "401", "402", "403"]
     # LIST_STRIP_ID = ["101", "102", "103", "104", "105", "106", "107", "108", "109", 
                      # "201", "202", "203", "204", "205", "206", "207", "208",
                      # "301"]
-    LIST_STRIP_ID = ["402"]
-    PBAR = tqdm(LIST_STRIP_ID)
+    PBAR = tqdm(LIST_STRIP_ID[2::3])
     for STRIP_ID in PBAR:
         PBAR.set_description(f"Processing: s{STRIP_ID}")
         main_each_strip_id(STRIP_ID)

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from numba import jit
+import seaborn as sns
 import matplotlib.pyplot as plt
 #%%
 @jit(nopython=True) 
@@ -76,27 +77,30 @@ def load_df(root_df_s1_temporal, strip_id):
             df.loc[df["loss_ratio"] > 0, "START_DATE"] = ((df.loc[df["loss_ratio"] > 0, "START_DATE"] - df.loc[df["loss_ratio"] > 0, "final_plant_date"]).dt.days//6)
             df.loc[df["loss_ratio"] == 0, "START_DATE"] = -1
             df["START_DATE"] = df["START_DATE"].astype("int")
-            # df = df.loc[(df["loss_ratio"] == 0).sample(frac=0.1) | (df["loss_ratio"] != 0)]
+            df = df.loc[(df["loss_ratio"] == 0).sample(frac=0.1) | (df["loss_ratio"] != 0)]
             
             list_df.append(df)
     df = pd.concat(list_df, ignore_index=True)
     return df
 
-def change_t(column_t, const):
+def change_date(column, const):
     """
     Add or subtract column_t ex. ("t20", 5) >> "t25"
     Examples
     --------
     >>> change_t("t20", 5) >> "t25"
-    >>> change_t("t20", -2) >> "t18"
+    >>> change_t("s20", -2) >> "s18"
     """
-    return f"t{int(column_t[1:])+const}"
-#%%
+    return f"{column[0]}{int(column[1:])+const}"
+
+def get_columns_range(column, char, window):
+    return [f"{char}{i}" for i in range(int(column[1:])+window[0], int(column[1:])+window[1]+1)]
 #%%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 strip_id = "402"
 # [(column, 6*int(column[1:])) for column in columns]
-columns = [f"t{i}" for i in range(31)]
+columns_mean = [f"m{i}" for i in range(31)]
+columns_std  = [f"s{i}" for i in range(31)]
 age_group1 = [f"t{i}" for i in range(0, 7)]
 age_group2 = [f"t{i}" for i in range(6, 15)]
 age_group3 = [f"t{i}" for i in range(14, 20)]
@@ -105,44 +109,61 @@ age_group4 = [f"t{i}" for i in range(19, 31)]
 # Load data
 df = load_df(root_df_s1_temporal, strip_id)
 #%%
-df_mean_normal_province = df.loc[df["loss_ratio"] == 0].groupby(["PLANT_PROVINCE_CODE"])[columns].mean()
-df_mean_flood_province = df.loc[df["loss_ratio"] >= 0.8].groupby(["PLANT_PROVINCE_CODE"])[columns].mean()
+df_mean_normal_province = df.loc[df["loss_ratio"] == 0].groupby(["PLANT_PROVINCE_CODE"])[columns_mean].mean()
+df_mean_flood_province = df.loc[df["loss_ratio"] >= 0.8].groupby(["PLANT_PROVINCE_CODE"])[columns_mean].mean()
 #%%
-plt.close('all')
-for index, row in tqdm(df[df["loss_ratio"] > 0].iterrows(), total=len(df[df["loss_ratio"] > 0])):
+list_diff_mean_f = []
+list_diff_mean_nf = []
+# for index, row in tqdm(df[df["loss_ratio"] > 0].iterrows(), total=len(df[df["loss_ratio"] > 0])):
+for index, row in tqdm(df.iterrows(), total=len(df)):
+    if row.loss_ratio > 0 :
+        if row.START_DATE >= 3 and row.START_DATE <= 28:
+            column = f"m{row['START_DATE']}"
+            diff = (row[get_columns_range(column, "m", (0, 2))].min() - row[get_columns_range(column, "m", (-3, -1))].mean())
+            # diff = np.diff(row[get_columns_range(column_flood, "m", (3, 2))])
+            list_diff_mean_f.append(diff.mean())
+    else:
+        column = f"m{np.random.randint(3, 29)}"
+        diff = (row[get_columns_range(column, "m", (0, 2))].min() - row[get_columns_range(column, "m", (-3, -1))].mean())
+        # diff = np.diff(row[get_columns_range(column, "m", (3, 2))])
+        list_diff_mean_nf.append(diff.mean())
+#%%
+sns.histplot(list_diff_mean_f, label="Change(flood)")
+sns.histplot(list_diff_mean_nf, label="Change(non-flood)")
+plt.legend()
+plt.title("Min(t, t+1, t+2)-Mean(t-3, t-2, t-1)")
+#%%
 
-    plt.plot(row[columns])
-    plt.axvline(f"t{row['START_DATE'].astype(int)}", color="r", linestyle="-.")
-    plt.grid()
-    break
+
+
 #%%
 row = df.loc[df["loss_ratio"] > 0].sample(n=1).squeeze()
 #%%
 plt.close('all')
-column_flood = f"t{row['START_DATE'].astype(int)}"
-plt.plot(row[columns])
+column_flood = f"m{row['START_DATE']}"
+plt.plot(row[columns_mean])
 plt.axvline(f"{column_flood}", color="r", linestyle="-.")
 plt.grid()
 plt.title(f"{row['loss_ratio']}")
 #%% -3, +2 seems to be okay
 # Get back scattering
-row[change_t(column_flood, -3):change_t(column_flood, +2)].plot()
+dn = row[change_date(column_flood, -3):change_date(column_flood, +2)]
 #%%
-# Check downward trend
-row[change_t(column_flood, 0):change_t(column_flood, 2)] - row[change_t(column_flood, -3):change_t(column_flood, -1)].mean()
+# Check downward trend (After flood - mean(before_flood)) Should be at least one period of high negative
+downtrend = (row[change_date(column_flood, 0):change_date(column_flood, 2)] - row[change_date(column_flood, -3):change_date(column_flood, -1)].mean()).values
 #%%
 # Find cumulative change
-diff = np.diff(row[change_t(column_flood, -3):change_t(column_flood, +2)])
+diff = np.diff(row[change_date(column_flood, -3):change_date(column_flood, +2)])
 diff_cumsum = diff.cumsum()[1:] # Exclude first element ()
 #%%
+plt.plot(np.hstack([dn, downtrend, diff, diff_cumsum]))
 #%%
-for i in range(-4, 2):
-    for j in range(i+1, 3):
-        print(f"{i:2d}, {j:2d}, {row[change_t(column_flood, j)]-row[change_t(column_flood, i)]:5.2f}")
+diff.mean()
+
 #%%
 #%%
 # #%% Case Flood
-# plt.close('all')
+# plt.close('all')s
 # try:
 #     df_sample = df.loc[df["loss_ratio"] >= 0.8].sample(n=1)
 #     df_sample[columns] = df_sample[columns].interpolate(limit_direction="both", axis=1)
