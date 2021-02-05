@@ -46,6 +46,7 @@ for file_raster in [file for file in os.listdir(root_raster) if file.endswith(".
                           how="inner", on=["row", "col"])
     
     del df_mapping_drop_dup
+    
     print("Saving pixel values")
     for p, df_mapping_grp in df_mapping.groupby(["p_code"]):
         print(p, len(df_mapping_grp))
@@ -55,4 +56,21 @@ for file_raster in [file for file in os.listdir(root_raster) if file.endswith(".
     print(f"Finished: S{strip_id} desu yo")
     print()
 #%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
