@@ -135,7 +135,7 @@ for strip_id in list_strip_id:
                 pass
         
         df = pd.concat(list_df, ignore_index=True)
+        del list_df
         df = df.astype(dict_dtypes)
         
         df.to_parquet(path_save)
-        del list_df

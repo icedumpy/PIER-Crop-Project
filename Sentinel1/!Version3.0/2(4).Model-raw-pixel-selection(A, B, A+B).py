@@ -94,8 +94,8 @@ root_df_flood = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated"
 root_df_nonflood = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated"
 
 # Add strip_id to path
-root_df_flood = os.path.join(root_df_flood, f"{sat_type.lower()}_flood_pixel")
-root_df_nonflood = os.path.join(root_df_nonflood, f"{sat_type.lower()}_nonflood_pixel")
+root_df_flood = os.path.join(root_df_flood, f"{sat_type.lower()}_flood_pixel_new")
+root_df_nonflood = os.path.join(root_df_nonflood, f"{sat_type.lower()}_nonflood_pixel_new")
 os.makedirs(os.path.join(root_save_plot, sat_type, strip_id, "raw_pixel"), exist_ok=True)
 #%% Load dfflood, df_nonflood and drop nan
 df_flood, df_nonflood = get_df_flood_nonflood(root_df_flood, root_df_nonflood, p, strip_id)
