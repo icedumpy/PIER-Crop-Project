@@ -107,7 +107,7 @@ for strip_id in pbar_1:
             tqdm.write(f"df_mapping of strip_id_p: s{strip_id}_p{p} is already exists")
             continue
         polygon_province = gdf_provinces.loc[gdf_provinces["ADM1_PCODE"] == f"TH{p}"].geometry.values[0]
-        polygon_province.simplify(0.01)
+        polygon_province = polygon_province.simplify(0.01)
         
         df_vew = load_vew(root_df_vew, p)
         

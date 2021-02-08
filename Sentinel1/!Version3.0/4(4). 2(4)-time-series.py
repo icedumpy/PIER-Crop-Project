@@ -95,7 +95,7 @@ for row in df_vew_batch.itertuples():
         ax.axvline(column_flood - column_plant, color="red", linestyle="--")
         ax.grid()
         ax.set_title(f"{row.loss_ratio}")
-        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210203\Flood", f"{new_polygon_id}.png"))
+        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210208\Flood", f"{new_polygon_id}.png"))
     except IndexError:
         print(date_plant)
 #%%
@@ -148,7 +148,7 @@ for row in df_vew_batch.itertuples():
                 ax.text(idx, data[idx], f"{int(value)}")
         # ax.axvline(column_flood - column_plant, color="red", linestyle="--")
         ax.grid()
-        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210203\non-Flood", f"{new_polygon_id}.png"))
+        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210208\non-Flood", f"{new_polygon_id}.png"))
     except IndexError:
         print(date_plant)
 
