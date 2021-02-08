@@ -43,8 +43,8 @@ for strip_id in list_strip_id:
     raster = rasterio.open(path_raster)
     
     # Load raster img
-    img = raster.read([i+1 for i, band in enumerate(raster.descriptions) if (band[:4] in ["2020", "2021"]) and (datetime.datetime.strptime(band[:8], "%Y%m%d") > df_vew["final_plant_date"].min())])
-    list_band = [band for i, band in enumerate(raster.descriptions) if (band[:4] in ["2020", "2021"]) and (datetime.datetime.strptime(band[:8], "%Y%m%d") > df_vew["final_plant_date"].min())]
+    img = raster.read([i+1 for i, band in enumerate(raster.descriptions) if (band[:4] in ["2020", "2021"]) and (datetime.datetime.strptime(band[:8], "%Y%m%d") > df_vew["final_plant_date"].min()-datetime.timedelta(days=12))])
+    list_band = [band for i, band in enumerate(raster.descriptions) if (band[:4] in ["2020", "2021"]) and (datetime.datetime.strptime(band[:8], "%Y%m%d") > df_vew["final_plant_date"].min()-datetime.timedelta(days=12))]
     
     # Update data
     for i in range(img.shape[0]):
