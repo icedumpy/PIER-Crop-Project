@@ -56,8 +56,8 @@ def get_pixel_location_from_coords(x, y, geotransform):
 root_raster = r"G:\!PIER\!FROM_2TB\Complete_VV_separate"
 root_raster_valid_mask = r"G:\!PIER\!FROM_2TB\s1_valid_mask"
 root_raster_rowcol = r"G:\!PIER\!FROM_2TB\s1_pixel_rowcol_map"
-root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
-root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_ext_act_id_rowcol_map_prov_scene_v5(at-False)_2020"
+root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_malison_20210205"
+root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_ext_act_id_rowcol_map_prov_scene_v5(at-False)_2020(Malison)"
 path_gdf_provinces = r"F:\CROP-PIER\CROP-WORK\!common_shapefiles\thailand\thailand-province.shp"
 
 # For getting list_p from strip_id
@@ -109,7 +109,10 @@ for strip_id in pbar_1:
         polygon_province = gdf_provinces.loc[gdf_provinces["ADM1_PCODE"] == f"TH{p}"].geometry.values[0]
         polygon_province = polygon_province.simplify(0.01)
         
-        df_vew = load_vew(root_df_vew, p)
+        try:
+            df_vew = load_vew(root_df_vew, p)
+        except ValueError:
+            continue
         
         tqdm.write("\nStart creating df_mapping")
         list_df_mapping_T1 = []

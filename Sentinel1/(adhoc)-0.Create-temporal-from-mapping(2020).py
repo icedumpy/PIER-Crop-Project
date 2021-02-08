@@ -9,9 +9,10 @@ from icedumpy.df_tools import load_mapping, set_index_for_loc
 #%%
 sat_type = "S1AB"
 root_raster = os.path.join(r"C:\Users\PongporC\Desktop\temp", sat_type.upper())
-root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
-root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_ext_act_id_rowcol_map_prov_scene_v5(at-False)_2020"
-root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
+root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_malison_20210205"
+root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_ext_act_id_rowcol_map_prov_scene_v5(at-False)_2020(Malison)"
+root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020(Malison)"
+os.makedirs(root_df_s1_temporal, exist_ok=True)
 #%%
 list_strip_id = ["302", "303", "304", "305", "401", "402", "403"]
 #%%
@@ -22,7 +23,10 @@ for strip_id in list_strip_id:
     #     continue
     
     # Load df mapping
-    df_mapping, list_p = load_mapping(root_df_mapping, strip_id=strip_id)
+    try:
+        df_mapping, list_p = load_mapping(root_df_mapping, strip_id=strip_id)
+    except ValueError:
+        continue
     
     # Load df vew
     df_vew = pd.concat(
