@@ -8,16 +8,20 @@ from icedumpy.io_tools import load_model
 root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
 root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_prediction_2020"
+os.makedirs(root_save, exist_ok=True)
 #%%
 list_strip_id = ["302", "303", "304", "305", "401", "402", "403"]
 #%%
-for strip_id in list_strip_id[1::2]:
+for strip_id in list_strip_id[2::3]:
     print(strip_id)
     model1 = load_model(rf"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\{strip_id}-w-age\model1.joblib")
     model2 = load_model(rf"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\{strip_id}-w-age\model2.joblib")
-    #%%
+
     # Load df_s1_temporal
-    df_s1_temporal = pd.read_parquet(os.path.join(root_df_s1_temporal, f"df_s1ab_pixel_s{strip_id}.parquet"))
+    try:
+        df_s1_temporal = pd.read_parquet(os.path.join(root_df_s1_temporal, f"df_s1ab_pixel_s{strip_id}.parquet"))
+    except FileNotFoundError:
+        continue
     
     # Drop mis-located polygon
     df_s1_temporal = df_s1_temporal.loc[df_s1_temporal["is_within"]]
@@ -84,7 +88,7 @@ for strip_id in list_strip_id[1::2]:
                 list_date.append(date)
                 list_data_model1.append(data_model1)
             
-            # Predict model1 proba 
+            # Predict model1 proba
             data_model1 = np.vstack(list_data_model1)
             model1_prob = model1.predict_proba(data_model1)[:, -1]
             
@@ -93,11 +97,11 @@ for strip_id in list_strip_id[1::2]:
             if len(data) > 1:
                 data_model2 = np.vstack([data_model2.mean(axis=1), data_model2.std(axis=1), list_age]).T
             else:
-                data_model2 = np.vstack([data_model2.mean(axis=1), np.ones((data_model2.shape[0], )), list_age]).T
+                data_model2 = np.vstack([data_model2.mean(axis=1), np.zeros((data_model2.shape[0], )), list_age]).T
             model2_bin = model2.predict(data_model2)
             
             # Append data (np.int64, np.datetime64, int)
-            df = pd.DataFrame({"ext_act_id":int(ext_act_id),
+            df = pd.DataFrame({"ext_act_id": int(ext_act_id),
                                "date":list_date,
                                "predict":model2_bin.astype("int8"),
                              })
@@ -107,4 +111,4 @@ for strip_id in list_strip_id[1::2]:
         df = pd.concat(list_df, ignore_index=True)
         path_save = os.path.join(root_save, f"s1_prediction_p{p_code}_s{strip_id}.parquet")
         df.to_parquet(path_save)
-#%%
+   #%%

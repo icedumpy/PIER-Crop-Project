@@ -65,9 +65,6 @@ def get_df_flood_nonflood(root_df_flood, root_df_nonflood, p, strip_id):
     df_nonflood = df_nonflood.loc[~(df_nonflood[columns_pixel_values] <= 0).any(axis=1)]
     return df_flood, df_nonflood
 #%%
-
-
-#%%
 def get_better_flood_date(arr_pixel, arr_diff, window_size, index_middle):
     list_index_flood = []
     for row in range(arr_pixel.shape[0]):
