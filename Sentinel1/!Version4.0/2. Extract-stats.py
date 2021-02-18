@@ -73,7 +73,7 @@ def load_df(root_df_s1_temporal, strip_id):
             df = df[[column for column in df.columns if not column in columns]].drop_duplicates()
             df = pd.merge(df_temp, df[[column for column in df.columns if not column in columns]], how="inner")
             
-            # Calculate start_date (which tx) if no flood >> t(-1) else t(x)
+            # Calculate start_date (find tx) if no flood >> t(-1) else t(x)
             df.loc[df["loss_ratio"] > 0, "START_DATE"] = ((df.loc[df["loss_ratio"] > 0, "START_DATE"] - df.loc[df["loss_ratio"] > 0, "final_plant_date"]).dt.days//6)
             df.loc[df["loss_ratio"] == 0, "START_DATE"] = -1
             df["START_DATE"] = df["START_DATE"].astype("int")
@@ -109,8 +109,19 @@ age_group4 = [f"t{i}" for i in range(19, 31)]
 # Load data
 df = load_df(root_df_s1_temporal, strip_id)
 #%%
-df_mean_normal_province = df.loc[df["loss_ratio"] == 0].groupby(["PLANT_PROVINCE_CODE"])[columns_mean].mean()
-df_mean_flood_province = df.loc[df["loss_ratio"] >= 0.8].groupby(["PLANT_PROVINCE_CODE"])[columns_mean].mean()
+df_flood = df[df["START_DATE"] != -1]
+#%%
+list_mean = []
+list_std = []
+for index, row in df_flood.iterrows():
+    if row.START_DATE >= 3 and row.START_DATE <= 28:
+        list_mean.append(row[get_columns_range(f"m{row.START_DATE}", "m", (-2, 2))].values)
+        list_std.append(row[get_columns_range(f"s{row.START_DATE}", "s", (-2, 2))].values)
+mean = np.vstack(list_mean)
+std = np.vstack(list_std)
+#%%
+plt.plot(mean.mean(axis=0))
+#%%
 #%%
 list_diff_mean_f = []
 list_diff_mean_nf = []
