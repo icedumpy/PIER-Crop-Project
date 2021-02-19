@@ -109,6 +109,51 @@ age_group4 = [f"t{i}" for i in range(19, 31)]
 # Load data
 df = load_df(root_df_s1_temporal, strip_id)
 #%%
+df.loc[df["loss_ratio"] > 0, "final_plant_date"]
+#%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#%%
+#%%
 df_flood = df[df["START_DATE"] != -1]
 #%%
 list_mean = []
