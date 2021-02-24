@@ -93,62 +93,55 @@ root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_d
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210224\Fig"
 strip_id = "304"
 #%%
-for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
-    df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-    df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
-    columns = df.columns[:31]
-    columns_age1 = [f"t{i}" for i in range(0, 7)]
-    columns_age2 = [f"t{i}" for i in range(7, 16)]
-    columns_age3 = [f"t{i}" for i in range(16, 31)]
-    
-    # Convert power to db
-    df = convert_power_to_db(df, columns)
-    
-    # Diff
-    # for i in range(len(columns)-2):
-    #     df = df.assign(**{f"t{i+2}-t{i}":df[columns[i+2]]-df[columns[i]],
-    #                       f"t{i+1}-t{i}":df[columns[i+1]]-df[columns[i]]})
-    
-    df_nonflood = df[df["label"] == 0]
-    df_flood = df[df["label"] == 1]
-    
-    # Add flood column
-    df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
-    
-    # Calculate confidence interval
-    mean_normal = df_nonflood[columns].mean(axis=0).values
-    std_normal  = df_nonflood[columns].std(axis=0).values
-    ci_normal = 1.645 * std_normal/mean_normal
-    
-    # Plot Nonflood
-    df_sample = df_nonflood.groupby("ext_act_id").sample(n=1).sample(n=20)
-    for i, (index, row) in enumerate(df_sample.iterrows(), start=1):
-        plt.close("all")
-        fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
-        ax.plot(row[columns].values, linestyle="--", marker="o", color="blue", label="nonFlood")
-        ax.legend(loc=4)
-        ax.grid(linestyle="-.")
-        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{row.ext_act_id}")
-        
-        # Save fig
-        path_save = os.path.join(root_save, "nonFlood", f"{strip_id}_{i}.png")
-        os.makedirs(os.path.dirname(path_save), exist_ok=True)
-        fig.savefig(path_save, bbox_inches="tight")
-    
-    # Plot flood
-    df_sample = df_flood.groupby("ext_act_id").sample(n=1).sample(n=20)
-    for i, (index, row) in enumerate(df_sample.iterrows(), start=1):
-        plt.close("all")
-        fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
-        ax.axvline(row.flood_column, color="red", linestyle="--")
-        ax.text(row.flood_column, ax.get_ylim()[-1]+0.8, "Reported flood date", horizontalalignment ="center", color="red")
-        ax.plot(row[columns].values, linestyle="--", marker="o", color="blue", label="Flood")
-        ax.legend(loc=4)
-        ax.grid(linestyle="-.")
-        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{row.ext_act_id}")
-        
-        # Save fig
-        path_save = os.path.join(root_save, "Flood", f"{strip_id}_{i}.png")
-        os.makedirs(os.path.dirname(path_save), exist_ok=True)
-        fig.savefig(path_save, bbox_inches="tight")
+df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
+columns = df.columns[:31]
+columns_age1 = [f"t{i}" for i in range(0, 7)]
+columns_age2 = [f"t{i}" for i in range(7, 16)]
+columns_age3 = [f"t{i}" for i in range(16, 31)]
+
+# Convert power to db
+df = convert_power_to_db(df, columns)
+
+# Assign mean
+df = df.assign(mean = df[columns].mean(axis=1))
+df = df.assign(median = df[columns].median(axis=1))
+
+# Diff
+# for i in range(len(columns)-2):
+#     df = df.assign(**{f"t{i+2}-t{i}":df[columns[i+2]]-df[columns[i]],
+#                       f"t{i+1}-t{i}":df[columns[i+1]]-df[columns[i]]})
+
+df_nonflood = df[df["label"] == 0]
+df_flood = df[df["label"] == 1]
+
+# Add flood column
+df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
+#%%
+plt.close("all")
+fig, ax = plt.subplots(figsize=(16, 9))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #%%
