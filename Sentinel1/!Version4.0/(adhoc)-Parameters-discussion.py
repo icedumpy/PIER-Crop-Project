@@ -57,15 +57,9 @@ def convert_power_to_db(df, columns):
     df.loc[df["loss_ratio"] >= 0.8, "label"] = 1
     return df
 
-def initialize_plot(mean_normal, ci_normal, ylim=(-20, -5)):
+def initialize_plot(ylim=(-20, -5)):
     # Initialize figure
     fig, ax = plt.subplots(figsize=(16, 9))
-
-    # Plot normal curve
-    ax.plot(mean_normal, linestyle="--", marker="o", color="red", label="Mean(nonFlood) w/ 90% CI")
-
-    # Plot confidence interval
-    ax.fill_between(range(31), (mean_normal-ci_normal), (mean_normal+ci_normal), color='red', alpha=.5)
 
     # Draw group age
     ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
@@ -118,30 +112,17 @@ df_flood = df[df["label"] == 1]
 # Add flood column
 df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
 #%%
+df_sample = df.sample(n=1).squeeze()
+
 plt.close("all")
-fig, ax = plt.subplots(figsize=(16, 9))
+fig, ax = initialize_plot(ylim=(-20, -5))
 
+# Plot temporal
+ax.plot(df_sample[columns].values)
+# Plot mean, median
+ax.axhline(df_sample["mean"], linestyle="-.", color="red", label="Mean")
+ax.axhline(df_sample["median"], linestyle="--", color="blue", label="Median")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#%%
+# Add final details
+ax.legend()
+ax.grid(linestyle="--")
