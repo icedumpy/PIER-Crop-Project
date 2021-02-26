@@ -65,7 +65,7 @@ def initialize_plot(mean_normal, ci_normal, ylim=(-20, -5)):
     ax.plot(mean_normal, linestyle="--", marker="o", color="red", label="Mean (nonFlood) w/ 90% CI")
 
     # Plot confidence interval
-    ax.fill_between(range(30), (mean_normal-ci_normal), (mean_normal+ci_normal), color='red', alpha=.3)
+    ax.fill_between(range(30), (mean_normal-ci_normal), (mean_normal+ci_normal), color='red', alpha=.2)
 
     # Draw group age
     ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
@@ -93,7 +93,7 @@ root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
 root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210224\Fig"
-strip_id = "304"
+strip_id = "305"
 #%%
 df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
 df = df.drop(columns="t30") # Column "t30" is already out of season
@@ -145,13 +145,13 @@ fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
 ax.plot(df_sample[columns].values, linestyle="--", marker='o', color="blue", label="Flood")
 
 # Plot mean, median (age1)
-ax.hlines(df_sample["median(age1)"], xmin=0, xmax=6.5, linestyle="--", color="orange", label="Median (Age1)")
+ax.hlines(df_sample["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
 
 # Plot mean, median (age2)
-ax.hlines(df_sample["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", color="gray", label="Median (age2)")
+ax.hlines(df_sample["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
 
 # Plot mean, median (age3)
-ax.hlines(df_sample["median(age3)"], xmin=15.0, xmax=29, linestyle="--", color="purple", label="Median (age3)")
+ax.hlines(df_sample["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
 
 # Add final details
 ax.legend(loc=4)
@@ -159,4 +159,8 @@ ax.grid(linestyle="--")
 ax.set_xlabel("Rice age (day)")
 ax.set_ylabel("Backscatter coefficient (dB)")
 #%%
-
+new_polygon_id = 6182533
+#%%
+df = df[df["new_polygon_id"] == new_polygon_id]
+#%%
+np.power(10, df[columns]/10)

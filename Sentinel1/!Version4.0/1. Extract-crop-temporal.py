@@ -34,7 +34,7 @@ def add_missing_columns(df_s1_overall):
         column = str(column.date()).replace("-", "")
         if not column in df_s1_overall.columns[7:]:
             df_s1_overall = df_s1_overall.assign(**{column:np.nan})
-    df_s1_overall[df_s1_overall.columns[7:]] = df_s1_overall[df_s1_overall.columns[7:]].reindex(sorted(df_s1_overall.columns[7:]), axis=1)
+    df_s1_overall.iloc[:, 7:] = df_s1_overall[df_s1_overall.columns[7:]].reindex(sorted(df_s1_overall.columns[7:]), axis=1)
     return df_s1_overall
 #%%
 root_df_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
@@ -44,7 +44,7 @@ root_df_s1_overall = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pix
 os.makedirs(root_df_temporal, exist_ok=True)
 #%%
 list_strip_id = ["302", "303", "304", "305", "306", "401", "402", "403"]
-for strip_id in list_strip_id[0::4]:
+for strip_id in list_strip_id[4::5]:
     # Load df mapping
     df_mapping, _ = load_mapping(root_df_mapping, strip_id = strip_id)
     df_mapping = df_mapping.loc[(df_mapping["tier"] == 1) & df_mapping["is_within"]]
@@ -138,5 +138,3 @@ for strip_id in list_strip_id[0::4]:
 
         df.to_parquet(path_save)
 #%%
-
-
