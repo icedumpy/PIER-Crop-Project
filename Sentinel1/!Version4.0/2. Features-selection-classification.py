@@ -168,24 +168,7 @@ ax = set_roc_plot_template(ax)
 #%%
 df_pred = pd.DataFrame(x_test, columns=["median-min(age1)", "median-min(age2)", "median-min(age3)", "area-under-median(age1)", "area-under-median(age2)", "area-under-median(age3)"])
 df_pred = df_pred.assign(pred_proba = model.predict_proba(x_test)[:, 1])
+df_pred = df_pred.assign(label = y_test)
 #%%
 
 #%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
