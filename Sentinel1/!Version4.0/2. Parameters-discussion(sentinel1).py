@@ -60,42 +60,34 @@ def convert_power_to_db(df, columns):
 
 def initialize_plot(mean_normal, ci_normal, ylim=(-20, -5)):
     # Initialize figure
-    fig, ax = plt.subplots(2, 1, figsize=(16, 10))
+    fig, ax = plt.subplots(figsize=(16, 9))
 
     # Plot normal curve
-    ax[0].plot(mean_normal, linestyle="--", marker="o", color="green", label="Mean (nonFlood) w/ 90% CI")
+    ax.plot(mean_normal, linestyle="--", marker="o", color="green", label="Mean (nonFlood) w/ 90% CI")
 
     # Plot confidence interval
-    ax[0].fill_between(range(30), (mean_normal-ci_normal), (mean_normal+ci_normal), color='green', alpha=.2)
+    ax.fill_between(range(30), (mean_normal-ci_normal), (mean_normal+ci_normal), color='green', alpha=.2)
 
     # Draw group age
-    ax[0].axvspan(0.0, 6.5, alpha=0.2, color='red')
-    ax[0].axvspan(6.5, 15.0, alpha=0.2, color='green')
-    ax[0].axvspan(15.0, 29, alpha=0.2, color='yellow')
-    [ax[0].axvline(i, color="black") for i in [6.5, 15.0]]
-    ax[1].axvspan(0.0, 6.5, alpha=0.2, color='red')
-    ax[1].axvspan(6.5, 15.0, alpha=0.2, color='green')
-    ax[1].axvspan(15.0, 29, alpha=0.2, color='yellow')
-    [ax[1].axvline(i, color="black") for i in [6.5, 15.0]]
+    ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
+    ax.axvspan(6.5, 15.0, alpha=0.2, color='green')
+    ax.axvspan(15.0, 29, alpha=0.2, color='yellow')
+    [ax.axvline(i, color="black") for i in [6.5, 15.0]]
     
     # Add group descriptions
-    ax[0].text(2.5, ylim[-1]+0.25, "0-40 days")
-    ax[0].text(10, ylim[-1]+0.25, "40-90 days")
-    ax[0].text(22, ylim[-1]+0.25, "90+ days")
+    ax.text(2.5, ylim[-1]+0.25, "0-40 days")
+    ax.text(10, ylim[-1]+0.25, "40-90 days")
+    ax.text(22, ylim[-1]+0.25, "90+ days")
 
     # Set y limits
-    ax[0].set_ylim(ylim)
-    ax[1].set_ylim((-0.6, 0.6))
+    ax.set_ylim(ylim)
 
     # Add more ticks
-    ax[0].set_xticks(range(30))
-    ax[0].set_yticks(np.arange(*ylim))
-    ax[1].set_xticks(range(0, 30, 2))
-    ax[1].set_yticks(np.arange(-0.4, 0.6, 0.1))
+    ax.set_xticks(range(30))
+    ax.set_yticks(np.arange(*ylim))
     
     # Change x label name
-    ax[0].set_xticklabels([f"{6*i}-{6*(i+1)-1}" for i in range(30)], rotation="90")
-    ax[1].set_xticklabels([f"{6*i}-{6*(i+1)-1}" for i in range(0, 30, 2)], rotation="90")
+    ax.set_xticklabels([f"{6*i}-{6*(i+1)-1}" for i in range(30)], rotation="90")
     return fig, ax
 #%%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
@@ -114,11 +106,9 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     list_p = df["PLANT_PROVINCE_CODE"].astype(str).unique().tolist()
     df_mapping_modis = pd.concat([pd.read_parquet(os.path.join(root_df_modis_mapping, file)) for file in os.listdir(root_df_modis_mapping) if file.split(".")[0][-2:] in list_p], ignore_index=True)
     df_mapping_modis["row_col"] = df_mapping_modis["modis_pixel_row"].astype(str) + "-" + df_mapping_modis["modis_pixel_col"].astype(str)
-    
     df_ndwi_modis = pd.concat([pd.read_parquet(os.path.join(root_df_modis_ndwi, file)) for file in os.listdir(root_df_modis_ndwi) if file.split(".")[0][-2:] in list_p], ignore_index=True)
     df_ndwi_modis = df_ndwi_modis.loc[df_ndwi_modis["year"].isin([2018, 2019])]
-    
-    df_mapping_modis = df_mapping_modis.loc[df_mapping_modis["row_col"].isin(df_ndwi_modis["row_col"])]
+    df_mapping_modis.loc[df_mapping_modis["row_col"].isin(df_ndwi_modis["row_col"])]
     
     # Drop somes
     df = df[df.ext_act_id.isin(df_mapping_modis.ext_act_id)]
@@ -127,7 +117,6 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     columns_age1 = [f"t{i}" for i in range(0, 7)]
     columns_age2 = [f"t{i}" for i in range(7, 15)]
     columns_age3 = [f"t{i}" for i in range(15, 30)]
-    columns_modis = [f"ndwi_t{i}" for i in range(1, 15)]
     
     # Convert power to db
     df = convert_power_to_db(df, columns)
@@ -162,91 +151,62 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     mean_normal = df_nonflood[columns].mean(axis=0).values
     ci_normal = 1.645*df_nonflood[columns].std(axis=0).values/mean_normal
     
-    count = 0
-    df_sample = df_nonflood.groupby(["ext_act_id"]).sample(n=1).head(50)
-    for index, row in df_sample.iterrows():
-        modis = df_ndwi_modis[df_ndwi_modis["row_col"] == df_mapping_modis.loc[df_mapping_modis["ext_act_id"] == row.ext_act_id, "row_col"].values[0]]
-        modis = modis[modis.prov_cd == row.PLANT_PROVINCE_CODE]
-        modis = modis[modis["year"] == row.final_plant_date.year].squeeze()
-        if len(modis) == 0:
-            continue
-
+    df_sample = df_nonflood.groupby(["ext_act_id"]).sample(n=1).head(20)
+    for i, (index, row) in enumerate(df_sample.iterrows()):
         plt.close("all")
         fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
         
         # Plot temporal
-        ax[0].plot(row[columns].values, linestyle="--", marker='o', color="blue", label="Sample(nonFlood)")
+        ax.plot(row[columns].values, linestyle="--", marker='o', color="blue", label="Sample(nonFlood)")
         
-        # # Plot mean, median (age1)
-        # ax[0].hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
+        # Plot mean, median (age1)
+        ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
         
-        # # Plot mean, median (age2)
-        # ax[0].hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
+        # Plot mean, median (age2)
+        ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
         
-        # # Plot mean, median (age3)
-        # ax[0].hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
-        
-        # Add modis
-        ax[1].plot([2*i-1 for i in range(1, 15)], modis[columns_modis].values.reshape(-1), linestyle="--", marker='o', color="blue", label="Modis-ndwi")
-        ax[1].legend(loc="best")
-        ax[1].grid(linestyle="--")    
+        # Plot mean, median (age3)
+        ax.hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
         
         # Add final details
-        ax[0].legend(loc="best")
-        ax[0].grid(linestyle="--")
-        ax[1].set_xlabel("Rice age (day)")
-        ax[0].set_ylabel("Backscatter coefficient (dB)")
-        ax[1].set_ylabel("NDWI")
+        ax.legend(loc=4)
+        ax.grid(linestyle="--")
+        ax.set_xlabel("Rice age (day)")
+        ax.set_ylabel("Backscatter coefficient (dB)")
         fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{row.ext_act_id}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})")
         
         # Savefig
-        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210301\normal", f"{strip_id}_{count+1}.png"), bbox_inches="tight")
-        count+=1
-        if count == 21:
-            break
+        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210228\normal", f"{strip_id}_{i+1}.png"), bbox_inches="tight")
     
-    count = 0
-    df_sample = df_flood.groupby(["ext_act_id"]).sample(n=1).head(50)
+    df_sample = df_flood.groupby(["ext_act_id"]).sample(n=1).head(20)
     for i, (index, row) in enumerate(df_sample.iterrows()):
-        modis = df_ndwi_modis[df_ndwi_modis["row_col"] == df_mapping_modis.loc[df_mapping_modis["ext_act_id"] == row.ext_act_id, "row_col"].values[0]]
-        modis = modis[modis["year"] == row.final_plant_date.year].squeeze()
-        if len(modis) == 0:
-            continue
         
         plt.close("all")
         fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
         
         # Plot temporal
-        ax[0].plot(row[columns].values, linestyle="--", marker='o', color="blue", label="Sample(Flood)")
+        ax.plot(row[columns].values, linestyle="--", marker='o', color="blue", label="Sample(Flood)")
         
-        # # Plot mean, median (age1)
-        # ax[0].hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
+        # Plot mean, median (age1)
+        ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
         
-        # # Plot mean, median (age2)
-        # ax[0].hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
+        # Plot mean, median (age2)
+        ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
         
-        # # Plot mean, median (age3)
-        # ax[0].hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
+        # Plot mean, median (age3)
+        ax.hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
         
         # Draw start date
-        ax[0].axvline(row.flood_column, color="red", linestyle="--")
-        ax[0].text(row.flood_column, ax[0].get_ylim()[1]+0.8, "Reported flood date", horizontalalignment="center", color="red")
-        
-        # Add modis
-        ax[1].plot([2*i-1 for i in range(1, 15)], modis[columns_modis].values, linestyle="--", marker='o', color="blue", label="Modis-ndwi")
-        ax[1].legend(loc="best")
-        ax[1].grid(linestyle="--")
+        ax.axvline(row.flood_column, color="red", linestyle="--")
+        ax.text(row.flood_column, ax.get_ylim()[1]+0.8, "Reported flood date", horizontalalignment="center", color="red")
         
         # Add final details
-        ax[0].legend(loc="best")
-        ax[0].grid(linestyle="--")
-        ax[0].set_xlabel("Rice age (day)")
-        ax[0].set_ylabel("Backscatter coefficient (dB)")
+        ax.legend(loc=4)
+        ax.grid(linestyle="--")
+        ax.set_xlabel("Rice age (day)")
+        ax.set_ylabel("Backscatter coefficient (dB)")
         fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{row.ext_act_id}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})")
         
         # Savefig
-        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210301\flood", f"{strip_id}_{count+1}.png"), bbox_inches="tight")
-        count+=1
-        if count == 21:
-            break
+        fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210228\flood", f"{strip_id}_{i+1}.png"), bbox_inches="tight")
 #%%
