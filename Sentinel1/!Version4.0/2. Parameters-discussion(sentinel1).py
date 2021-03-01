@@ -91,28 +91,13 @@ def initialize_plot(mean_normal, ci_normal, ylim=(-20, -5)):
     return fig, ax
 #%%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
-root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
-root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
-root_df_modis_mapping = r"F:\CROP-PIER\CROP-WORK\modis_dataframe\dataset\2015-2019\mapping_ext_act_id_with_modis_pixel"
-root_df_modis_ndwi = r"F:\CROP-PIER\CROP-WORK\modis_dataframe\dataset\2015-2019\ndwi-pixel-values-province-t14"
 strip_id = "304"
 #%%
 for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
     df = df.drop(columns="t30") # Column "t30" is already out of season
     df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
-    
-    # Load df_modis
-    list_p = df["PLANT_PROVINCE_CODE"].astype(str).unique().tolist()
-    df_mapping_modis = pd.concat([pd.read_parquet(os.path.join(root_df_modis_mapping, file)) for file in os.listdir(root_df_modis_mapping) if file.split(".")[0][-2:] in list_p], ignore_index=True)
-    df_mapping_modis["row_col"] = df_mapping_modis["modis_pixel_row"].astype(str) + "-" + df_mapping_modis["modis_pixel_col"].astype(str)
-    df_ndwi_modis = pd.concat([pd.read_parquet(os.path.join(root_df_modis_ndwi, file)) for file in os.listdir(root_df_modis_ndwi) if file.split(".")[0][-2:] in list_p], ignore_index=True)
-    df_ndwi_modis = df_ndwi_modis.loc[df_ndwi_modis["year"].isin([2018, 2019])]
-    df_mapping_modis.loc[df_mapping_modis["row_col"].isin(df_ndwi_modis["row_col"])]
-    
-    # Drop somes
-    df = df[df.ext_act_id.isin(df_mapping_modis.ext_act_id)]
-    
+
     columns = df.columns[:30]
     columns_age1 = [f"t{i}" for i in range(0, 7)]
     columns_age2 = [f"t{i}" for i in range(7, 15)]
