@@ -9,7 +9,7 @@ from icedumpy.df_tools import load_vew, clean_and_process_vew, load_mapping, set
 #%%
 root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged"
 root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v5(at-False)"
-root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5 - Backup2"
+root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5"
 #%%
 strip_id = "304"
 model1 = load_model(rf"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\{strip_id}-w-age\model1.joblib")
@@ -53,61 +53,6 @@ df_content = df_content.set_index("index")
 df_content.loc[df_content.index[0]-1, ["start", "stop"]] = [df_content.loc[df_content.index[0], "start"]-datetime.timedelta(days=6), df_content.loc[df_content.index[0], "start"]]
 df_content = df_content.sort_index()
 #%%
-# df_vew_batch = df_vew.loc[df_vew["loss_ratio"] > 0].sample(n=100)
-# for row in df_vew_batch.itertuples():
-#     try:
-#         pred = [0, 0]
-#         new_polygon_id = row.new_polygon_id
-#         date_plant = row.final_plant_date
-#         date_harvest = date_plant+datetime.timedelta(days=180)
-#         date_flood = row.START_DATE
-        
-#         column_plant = df_content.loc[((df_content["start"] < date_plant) & (df_content["stop"] >= date_plant))].index[0]
-#         column_harvest = df_content.loc[((df_content["start"] < date_harvest) & (df_content["stop"] >= date_harvest))].index[0]
-#         column_flood = df_content.loc[((df_content["start"] < date_flood) & (df_content["stop"] >= date_flood))].index[0]
-#         data = df_s1_temporal.loc[[new_polygon_id], df_s1_temporal.columns[column_plant:column_harvest+1]]
-#         for i in range(len(data.columns)-3):
-#             date = datetime.datetime.strptime(data.columns[i+2], "%Y%m%d")
-#             # print(date)
-#             # month = date.month
-#             age = (date - date_plant).days
-#             age = np.digitize(age, bins=[0, 40, 90], right=True)
-            
-#             model1_prob = model1.predict_proba(np.hstack([data.iloc[:, i:i+4].values, age+np.zeros((len(data), 1))]).reshape(-1, 5))[:, -1]
-#             # model1_prob = model1.predict_proba(np.hstack([data.iloc[:, i:i+3].values, age+np.zeros((len(data), 1)), month+np.zeros((len(data), 1))]).reshape(-1, 5))[:, -1]
-        
-#             model1_prob_mean = model1_prob.mean()
-#             if len(model1_prob) == 1:
-#                 model1_prob_std = 0
-#             else:
-#                 model1_prob_std = model1_prob.std()
-#             model2_bin = model2.predict(np.array([model1_prob_mean, model1_prob_std, age]).reshape(-1, 3))
-            
-#             # print("---------------------------------")
-#             # print(data.columns[i:i+3].values, str(date_flood.date()).replace("-", ""), age)
-#             # print(data.iloc[:, i:i+3].values.mean(axis=0))
-#             # print(f"Model1(mean, std): ({model1_prob_mean:.2f}, {model1_prob_std:.2f})")
-#             # print(f"Model2(Bin): {int(model2_bin)}")
-#             # print()
-            
-#             pred.append(model2_bin[0])
-#         while len(pred) < 31:
-#             pred.append(0.0)
-#         plt.close('all')
-#         fig, ax = plt.subplots()
-#         data = data.mean(axis=0)
-#         ax.plot([i for i in range(data.shape[-1])], data.values)
-#         for idx, value in enumerate(pred):
-#             if value != 0:
-#                 ax.scatter(idx, data[idx], color="red")
-#                 ax.text(idx, data[idx], f"{int(value)}")
-#         ax.axvline(column_flood - column_plant, color="red", linestyle="--")
-#         ax.grid()
-#         ax.set_title(f"{row.loss_ratio}")
-#         fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210208\Flood", f"{new_polygon_id}.png"))
-#     except IndexError:
-#         print(date_plant)
-#%%
 list_df = []
 for (ext_act_id, new_polygon_id, final_plant_date, final_harvest_date), df_vewl_grp in tqdm(df_vew.groupby(["ext_act_id", "new_polygon_id", "final_plant_date", "final_harvest_date"])):
     try:
@@ -150,6 +95,8 @@ for (ext_act_id, new_polygon_id, final_plant_date, final_harvest_date), df_vewl_
         data_model2 = np.vstack([data_model2.mean(axis=1), np.zeros((data_model2.shape[0], )), list_age]).T
     model2_bin = model2.predict(data_model2)
     
+    
+    
     # Append data (np.int64, np.datetime64, int)
     df = pd.DataFrame({"ext_act_id": int(ext_act_id),
                        "date":list_date,
@@ -157,7 +104,10 @@ for (ext_act_id, new_polygon_id, final_plant_date, final_harvest_date), df_vewl_
                        })
     list_df.append(df)
 #%%
-# Create result dataframe and s ave
+df
+#%%
+
+# Create result dataframe and save
 df = pd.concat(list_df, ignore_index=True)
 path_save = os.path.join(r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated", "s1_2019_prediction_p30_s304.parquet")
 df.to_parquet(path_save)
