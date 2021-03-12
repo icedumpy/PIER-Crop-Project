@@ -70,14 +70,16 @@ def initialize_plot(mean_normal, ci_normal, ylim=(-20, -5)):
 
     # Draw group age
     ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
-    ax.axvspan(6.5, 15.0, alpha=0.2, color='green')
-    ax.axvspan(15.0, 29, alpha=0.2, color='yellow')
-    [ax.axvline(i, color="black") for i in [6.5, 15.0]]
+    ax.axvspan(6.5, 15, alpha=0.2, color='green')
+    ax.axvspan(15, 20, alpha=0.2, color='yellow')
+    ax.axvspan(20, 29, alpha=0.2, color='purple')
+    [ax.axvline(i, color="black") for i in [6.5, 15.0, 20]]
     
     # Add group descriptions
-    ax.text(2.5, ylim[-1]+0.25, "0-40 days")
-    ax.text(10, ylim[-1]+0.25, "40-90 days")
-    ax.text(22, ylim[-1]+0.25, "90+ days")
+    ax.text(3.0, ylim[-1]+0.25, "0-40 days", horizontalalignment="center")
+    ax.text(11, ylim[-1]+0.25, "40-90 days", horizontalalignment="center")
+    ax.text(17.5, ylim[-1]+0.25, "90-120 days", horizontalalignment="center")
+    ax.text(25, ylim[-1]+0.25, "120+ days", horizontalalignment="center")
 
     # Set y limits
     ax.set_ylim(ylim)
@@ -99,9 +101,10 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
 
     columns = df.columns[:30]
-    columns_age1 = [f"t{i}" for i in range(0, 7)]
-    columns_age2 = [f"t{i}" for i in range(7, 15)]
-    columns_age3 = [f"t{i}" for i in range(15, 30)]
+    columns_age1 = [f"t{i}" for i in range(0, 7)] # 0-41
+    columns_age2 = [f"t{i}" for i in range(7, 15)] # 42-89
+    columns_age3 = [f"t{i}" for i in range(15, 20)] # 90-119
+    columns_age4 = [f"t{i}" for i in range(20, 30)] # 120-179
     
     # Convert power to db
     df = convert_power_to_db(df, columns)
@@ -115,16 +118,21 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
                       "median(age2)":df[columns_age2].median(axis=1),
                       "mean(age3)":df[columns_age3].mean(axis=1),
                       "median(age3)":df[columns_age3].median(axis=1),
+                      "mean(age4)":df[columns_age4].mean(axis=1),
+                      "median(age4)":df[columns_age4].median(axis=1),
                       })
     df = df.assign(**{"median-min(age1)":df["median(age1)"]-df[columns_age1].min(axis=1),
                       "median-min(age2)":df["median(age2)"]-df[columns_age2].min(axis=1),
                       "median-min(age3)":df["median(age3)"]-df[columns_age3].min(axis=1),
+                      "median-min(age4)":df["median(age4)"]-df[columns_age4].min(axis=1),
                       })
     
     # Assign sum of value under median (instead of area under median)
     df = df.assign(**{"area-under-median(age1)":(-df[columns_age1].sub(df["median(age1)"], axis=0)).clip(lower=0, upper=None).sum(axis=1),
                       "area-under-median(age2)":(-df[columns_age2].sub(df["median(age2)"], axis=0)).clip(lower=0, upper=None).sum(axis=1),
-                      "area-under-median(age3)":(-df[columns_age3].sub(df["median(age3)"], axis=0)).clip(lower=0, upper=None).sum(axis=1)})
+                      "area-under-median(age3)":(-df[columns_age3].sub(df["median(age3)"], axis=0)).clip(lower=0, upper=None).sum(axis=1),
+                      "area-under-median(age4)":(-df[columns_age4].sub(df["median(age4)"], axis=0)).clip(lower=0, upper=None).sum(axis=1)
+                      })
     
     df_nonflood = df[df["label"] == 0]
     df_flood = df[df["label"] == 1]
@@ -151,7 +159,10 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
         ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
         
         # Plot mean, median (age3)
-        ax.hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
+        ax.hlines(row["median(age3)"], xmin=15.0, xmax=20, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
+        
+        # Plot mean, median (age4)
+        ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--", linewidth=2.5, color="yellow", label="Median (age4)")
         
         # Add final details
         ax.legend(loc=4)
@@ -165,7 +176,6 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     
     df_sample = df_flood.groupby(["ext_act_id"]).sample(n=1).head(20)
     for i, (index, row) in enumerate(df_sample.iterrows()):
-        
         plt.close("all")
         fig, ax = initialize_plot(mean_normal, ci_normal, ylim=(-20, 0))
         
@@ -180,7 +190,10 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
         
         # Plot mean, median (age3)
         ax.hlines(row["median(age3)"], xmin=15.0, xmax=29, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
-        
+
+        # Plot mean, median (age4)
+        ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--", linewidth=2.5, color="yellow", label="Median (age4)")
+                
         # Draw start date
         ax.axvline(row.flood_column, color="red", linestyle="--")
         ax.text(row.flood_column, ax.get_ylim()[1]+0.8, "Reported flood date", horizontalalignment="center", color="red")
