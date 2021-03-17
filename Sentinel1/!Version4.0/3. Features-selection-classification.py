@@ -57,30 +57,54 @@ def convert_power_to_db(df, columns):
     # Assign label
     df.loc[df["loss_ratio"] == 0, "label"] = 0
     df.loc[df["loss_ratio"] >= 0.8, "label"] = 1
+    df["label"] = df["label"].astype("uint8")
     return df
 
-def initialize_plot(ylim=(-20, -5)):
+def initialize_plot(ylim=(-20, 0)):
     # Initialize figure
     fig, ax = plt.subplots(figsize=(16, 9))
     
     # Draw group age
     ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
-    ax.axvspan(6.5, 15.5, alpha=0.2, color='green')
-    ax.axvspan(15.5, 30, alpha=0.2, color='yellow')
-    [ax.axvline(i, color="black") for i in [6.5, 15.5]]
+    ax.axvspan(6.5, 15, alpha=0.2, color='green')
+    ax.axvspan(15.0, 20, alpha=0.2, color='yellow')
+    ax.axvspan(20.0, 29, alpha=0.2, color='purple')
+    
+    [ax.axvline(i, color="black") for i in [6.5, 15, 20]]
     
     # Add group descriptions
-    ax.text(2.5, ylim[-1]+0.25, "0-40 days")
-    ax.text(10, ylim[-1]+0.25, "40-90 days")
-    ax.text(22, ylim[-1]+0.25, "90+ days")
+    ax.text(3, ylim[-1]+0.25, "0-40 days", horizontalalignment="center")
+    ax.text(10.5, ylim[-1]+0.25, "40-90 days", horizontalalignment="center")
+    ax.text(17.5, ylim[-1]+0.25, "90-120 days", horizontalalignment="center")
+    ax.text(24.5, ylim[-1]+0.25, "120+ days", horizontalalignment="center")
     
     # Set y limits
     ax.set_ylim(ylim)
     
     # Add more ticks
-    ax.set_xticks(range(31))
+    ax.set_xticks(range(30))
     ax.set_yticks(np.arange(*ylim))
     
+    return fig, ax
+
+def plot_sample(df):
+    row = df.sample(n=1).squeeze()
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    ax.plot(row[columns].values, linestyle="--", marker="o", color="blue")
+    
+    # Plot mean, median (age1)
+    ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--", linewidth=2.5, color="orange", label="Median (Age1)")
+    
+    # Plot mean, median (age2)
+    ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--", linewidth=2.5, color="gray", label="Median (age2)")
+    
+    # Plot mean, median (age3)
+    ax.hlines(row["median(age3)"], xmin=15.0, xmax=20, linestyle="--", linewidth=2.5, color="purple", label="Median (age3)")
+    
+    # Plot mean, median (age4)
+    ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--", linewidth=2.5, color="yellow", label="Median (age4)")
+    
+    fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
     return fig, ax
 
 @jit(nopython=True)
@@ -113,7 +137,7 @@ root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_d
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210224\Fig"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-strip_id = "304"
+strip_id = "402"
 #%%
 # for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
 print(strip_id)
@@ -156,7 +180,8 @@ df = df.assign(**{"median-min":df["median"]-df[columns].min(axis=1),
                   })
 
 # Assign min value 
-df = df.assign(**{"min(age1)":df[columns_age1].min(axis=1),
+df = df.assign(**{"min" : df[columns].min(axis=1),
+                  "min(age1)":df[columns_age1].min(axis=1),
                   "min(age2)":df[columns_age2].min(axis=1),
                   "min(age3)":df[columns_age3].min(axis=1),
                   "min(age4)":df[columns_age4].min(axis=1),
@@ -181,23 +206,23 @@ arr_area_under_median_age4, arr_is_consecutive_age4, arr_consecutive_size_age4 =
 # 1 <-> 2, 2 <-> 1
 arr_index = np.where((arr_is_consecutive_age1 == 2) & (arr_is_consecutive_age2 == 0))[0]
 arr_consecutive_size_age1[arr_index] += arr_consecutive_size_age2[arr_index]
-arr_consecutive_size_age2[arr_index] += arr_consecutive_size_age1[arr_index]
+arr_consecutive_size_age2[arr_index] = arr_consecutive_size_age1[arr_index]
 arr_area_under_median_age1[arr_index] += arr_area_under_median_age2[arr_index]
-arr_area_under_median_age2[arr_index] += arr_area_under_median_age1[arr_index]
+arr_area_under_median_age2[arr_index] = arr_area_under_median_age1[arr_index]
 
 # 2 <-> 3, 3 <-> 2
 arr_index = np.where((arr_is_consecutive_age2 == 2) & (arr_is_consecutive_age3 == 0))[0]
 arr_consecutive_size_age2[arr_index] += arr_consecutive_size_age3[arr_index]
-arr_consecutive_size_age3[arr_index] += arr_consecutive_size_age2[arr_index]
+arr_consecutive_size_age3[arr_index] = arr_consecutive_size_age2[arr_index]
 arr_area_under_median_age2[arr_index] += arr_area_under_median_age3[arr_index]
-arr_area_under_median_age3[arr_index] += arr_area_under_median_age2[arr_index]
+arr_area_under_median_age3[arr_index] = arr_area_under_median_age2[arr_index]
 
 # 3 <-> 4, 4 <-> 3
 arr_index = np.where((arr_is_consecutive_age3 == 2) & (arr_is_consecutive_age4 == 0))[0]
 arr_consecutive_size_age3[arr_index] += arr_consecutive_size_age4[arr_index]
-arr_consecutive_size_age4[arr_index] += arr_consecutive_size_age3[arr_index]
+arr_consecutive_size_age4[arr_index] = arr_consecutive_size_age3[arr_index]
 arr_area_under_median_age3[arr_index] += arr_area_under_median_age4[arr_index]
-arr_area_under_median_age4[arr_index] += arr_area_under_median_age3[arr_index]
+arr_area_under_median_age4[arr_index] = arr_area_under_median_age3[arr_index]
 
 # Assign sum of cunsecutive values under median (around min value)
 df = df.assign(**{"area-under-median(age1)" : arr_area_under_median_age1,
@@ -218,31 +243,50 @@ df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
 
 df_nonflood = df[df["label"] == 0]
 df_flood = df[df["label"] == 1]
-
-# Add flood column
-# df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
+df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
 #%%
-x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), df.columns[-28:]].values
-y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]),  df.columns[-28:]].values
-y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+# x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), df.columns[-28:]].values
+# y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+# x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]),  df.columns[-28:]].values
+# y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+x = df[df.columns[-29:]].values
+y = df["label"].values
 #%%
 # model = RandomForestClassifier(n_jobs=-1)
 model = RandomForestClassifier(min_samples_leaf=5, max_depth=10, min_samples_split=10,
                                verbose=0, n_jobs=-1, random_state=42)
-model.fit(x_train, y_train)
+model.fit(x, y)
 
 plt.close('all')
 fig, ax = plt.subplots(figsize=(16, 9))
-plot_roc_curve(model, x_train, y_train, label="train", color="b-", ax=ax)       
-plot_roc_curve(model, x_test, y_test, label="test", color="g-", ax=ax)
+plot_roc_curve(model, x, y, label="all", color="b-", ax=ax)       
+# plot_roc_curve(model, x_test, y_test, label="test", color="g-", ax=ax)
 ax = set_roc_plot_template(ax)
-ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier{(1,)}\nTrain samples: Flood:{np.bincount(y_train.astype(int))[1]:,}, Non-Flood:{np.bincount(y_train.astype(int))[0]:,}\nTest samples: Flood:{np.bincount(y_test.astype(int))[1]:,}, Non-Flood:{np.bincount(y_test.astype(int))[0]:,}')
+# ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier{(1,)}\nTrain samples: Flood:{np.bincount(y_train.astype(int))[1]:,}, Non-Flood:{np.bincount(y_train.astype(int))[0]:,}\nTest samples: Flood:{np.bincount(y_test.astype(int))[1]:,}, Non-Flood:{np.bincount(y_test.astype(int))[0]:,}')
 # fig.savefig(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210312\Fig\{strip_id}.png")
 #%%
-df_pred = pd.DataFrame(df.loc[(df["ext_act_id"]%10).isin([8, 9])])
+df_pred = df.copy()
 df_pred = df_pred.drop(columns="label")
-df_pred = df_pred.assign(pred_proba = model.predict_proba(x_test)[:, 1])
-df_pred = df_pred.assign(label = y_test)
+df_pred = df_pred.assign(pred_proba = model.predict_proba(x)[:, 1])
+df_pred = df_pred.assign(label = y)
 df_pred = df_pred.assign(bce_loss=(-df_pred["label"]*np.log(df_pred["pred_proba"]))-((1-df_pred["label"])*np.log(1-df_pred["pred_proba"])))
 df_pred = df_pred.sort_values(by="bce_loss", ascending=False)
+#%%
+#%%
+from sklearn.mixture import GaussianMixture
+X = df_pred.bce_loss.values.reshape(-1, 1)
+gm = GaussianMixture(n_components=3, random_state=0).fit(X)
+df_pred = df_pred.assign(bce_loss_group = gm.predict(X))
+#%%
+count, bins_count = np.histogram(df_pred.bce_loss, bins=200)
+# finding the PDF of the histogram using count values 
+pdf = count / sum(count) 
+  
+# using numpy np.cumsum to calculate the CDF 
+# We can also find using the PDF values by looping and adding 
+cdf = np.cumsum(pdf) 
+  
+# plotting PDF and CDF 
+plt.plot(bins_count[1:], cdf, label="CDF") 
+plt.legend()  
+plt.grid()
