@@ -5,8 +5,10 @@ from tqdm import tqdm
 from numba import jit
 from tqdm import tqdm
 import seaborn as sns
+from pprint import pprint
 import matplotlib.pyplot as plt
 from sklearn import metrics
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 #%%
@@ -88,7 +90,10 @@ def initialize_plot(ylim=(-20, 0)):
     return fig, ax
 
 def plot_sample(df):
-    row = df.sample(n=1).squeeze()
+    if type(df) == pd.core.frame.DataFrame:
+        row = df.sample(n=1).squeeze()
+    else:
+        row = df.copy()
     fig, ax = initialize_plot(ylim=(-20, -5))
     ax.plot(row[columns].values, linestyle="--", marker="o", color="blue")
     
@@ -103,8 +108,11 @@ def plot_sample(df):
     
     # Plot mean, median (age4)
     ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--", linewidth=2.5, color="yellow", label="Median (age4)")
-    
-    fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
+    try:
+        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
+    except:
+        pass
+    plt.grid(linestyle="--")
     return fig, ax
 
 @jit(nopython=True)
@@ -134,10 +142,10 @@ def get_area_under_median(arr_min_index, arr_value_under_median):
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
 root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
-root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210224\Fig"
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210317\Fig"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-strip_id = "402"
+strip_id = "304"
 #%%
 # for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
 print(strip_id)
@@ -149,14 +157,14 @@ df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
 df = df.drop(columns="t30") # Column "t30" is already out of season
 df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 2*len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
-#%%
+
 # Define columns' group name
 columns = df.columns[:30]
 columns_age1 = [f"t{i}" for i in range(0, 7)] # 0-41
 columns_age2 = [f"t{i}" for i in range(7, 15)] # 42-89
 columns_age3 = [f"t{i}" for i in range(15, 20)] # 90-119
 columns_age4 = [f"t{i}" for i in range(20, 30)] # 120-179
-#%%
+
 # Convert power to db
 df = convert_power_to_db(df, columns)
 
@@ -240,23 +248,48 @@ df = df.assign(**{"count-under-median(age1)" : arr_consecutive_size_age1,
 
 # Merge photo sensitivity
 df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
-
-df_nonflood = df[df["label"] == 0]
-df_flood = df[df["label"] == 1]
-df_flood = df_flood.assign(flood_column = (df_flood["START_DATE"]-df_flood["final_plant_date"]).dt.days//6)
 #%%
-# x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), df.columns[-28:]].values
-# y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-# x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]),  df.columns[-28:]].values
-# y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), df.columns[-29:]].values
+x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), df.columns[-29:]].values
+
+y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+#%%
+# Number of trees in random forest
+n_estimators = [20, 50, 100]
+max_features = ['auto', 'sqrt']
+max_depth = [int(x) for x in np.linspace(1, 45, num = 3)]
+min_samples_split = [3, 5, 10]
+min_samples_leaf = [3, 5, 10]
+
+# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf' : min_samples_leaf}
+pprint(random_grid)
+
+# Use the random grid to search for best hyperparameters
+
+# Random search of parameters, using 3 fold cross validation, 
+# search across 100 different combinations, and use all available cores
+rf_random = RandomizedSearchCV(estimator=RandomForestClassifier(),
+                               param_distributions=random_grid, 
+                               n_iter = 10, 
+                               cv = 5, 
+                               verbose=2, 
+                               random_state=42, 
+                               n_jobs = -1, 
+                               scoring='roc_auc')
+# Fit the random search model
+rf_random.fit(x_train, y_train)
+#%%
 x = df[df.columns[-29:]].values
 y = df["label"].values
-#%%
-# model = RandomForestClassifier(n_jobs=-1)
-model = RandomForestClassifier(min_samples_leaf=5, max_depth=10, min_samples_split=10,
-                               verbose=0, n_jobs=-1, random_state=42)
+model = rf_random.best_estimator_
 model.fit(x, y)
-
+#%%
 plt.close('all')
 fig, ax = plt.subplots(figsize=(16, 9))
 plot_roc_curve(model, x, y, label="all", color="b-", ax=ax)       
@@ -264,29 +297,45 @@ plot_roc_curve(model, x, y, label="all", color="b-", ax=ax)
 ax = set_roc_plot_template(ax)
 # ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier{(1,)}\nTrain samples: Flood:{np.bincount(y_train.astype(int))[1]:,}, Non-Flood:{np.bincount(y_train.astype(int))[0]:,}\nTest samples: Flood:{np.bincount(y_test.astype(int))[1]:,}, Non-Flood:{np.bincount(y_test.astype(int))[0]:,}')
 # fig.savefig(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210312\Fig\{strip_id}.png")
-#%%
+
 df_pred = df.copy()
 df_pred = df_pred.drop(columns="label")
 df_pred = df_pred.assign(pred_proba = model.predict_proba(x)[:, 1])
 df_pred = df_pred.assign(label = y)
-df_pred = df_pred.assign(bce_loss=(-df_pred["label"]*np.log(df_pred["pred_proba"]))-((1-df_pred["label"])*np.log(1-df_pred["pred_proba"])))
+df_pred = df_pred.assign(bce_loss=-(df_pred["label"]*np.log(df_pred["pred_proba"]))-((1-df_pred["label"])*np.log(1-df_pred["pred_proba"])))
 df_pred = df_pred.sort_values(by="bce_loss", ascending=False)
+df_pred = df_pred.assign(bce_loss_group = np.digitize(df_pred.bce_loss, [df_pred.bce_loss.quantile(0.10), 
+                                                                         df_pred.bce_loss.quantile(0.90), 
+                                                                         df_pred.bce_loss.quantile(0.95)], right=True))
+df_pred = df_pred.dropna(subset=["bce_loss"])
 #%%
+folder_save = os.path.join(root_save, strip_id)
+os.makedirs(folder_save, exist_ok=True)
 #%%
-from sklearn.mixture import GaussianMixture
-X = df_pred.bce_loss.values.reshape(-1, 1)
-gm = GaussianMixture(n_components=3, random_state=0).fit(X)
-df_pred = df_pred.assign(bce_loss_group = gm.predict(X))
-#%%
-count, bins_count = np.histogram(df_pred.bce_loss, bins=200)
-# finding the PDF of the histogram using count values 
-pdf = count / sum(count) 
-  
-# using numpy np.cumsum to calculate the CDF 
-# We can also find using the PDF values by looping and adding 
-cdf = np.cumsum(pdf) 
-  
-# plotting PDF and CDF 
-plt.plot(bins_count[1:], cdf, label="CDF") 
-plt.legend()  
-plt.grid()
+while True:
+    df_pred_sample = df_pred.groupby(["bce_loss_group", "label"]).sample(n=5)
+    if len(df_pred_sample.drop_duplicates(subset=["ext_act_id"])) == len(df_pred_sample):
+        break
+df_pred_sample = df_pred_sample.set_index(keys="ext_act_id")
+df_pred_sample = df_pred_sample.sort_index()
+# df_pred_sample = df_pred_sample.reset_index(drop=True)
+# df_pred_sample.index+=1
+df_pred_sample = df_pred_sample.assign(strip_id=strip_id)
+for index, row in df_pred_sample.iterrows(): 
+    plt.close("all")
+    path_save = os.path.join(folder_save, f"{index}")
+    fig, ax = plot_sample(row)
+    fig.suptitle("")
+    fig.savefig(path_save, bbox_inches="tight")
+
+df_pred_sample = df_pred_sample[["strip_id", "bce_loss", "bce_loss_group", "label", "pred_proba", "loss_ratio"]]
+df_pred_sample.to_csv(os.path.join(folder_save, f"Answer_{strip_id}.csv"))
+
+
+
+
+
+
+
+
+

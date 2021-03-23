@@ -105,6 +105,7 @@ def plot_sample(df):
     ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--", linewidth=2.5, color="yellow", label="Median (age4)")
     
     fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
+    plt.grid(linestyle="--")
     return fig, ax
 
 @jit(nopython=True)
@@ -252,6 +253,14 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
                       "count-under-median(age2)" : arr_consecutive_size_age2,
                       "count-under-median(age3)" : arr_consecutive_size_age3,
                       "count-under-median(age4)" : arr_consecutive_size_age4
+                      })
+    
+    # Conclude some of the parameters
+    df = df.assign(**{"median(min)": df[["median(age1)", "median(age2)", "median(age3)", "median(age4)"]].min(axis=1),
+                      "median-min(max)" : df[["median-min(age1)", "median-min(age2)", "median-min(age3)", "median-min(age4)"]].max(axis=1),
+                      "max-min(max)" : df[["max-min(age1)", "max-min(age2)", "max-min(age3)", "max-min(age4)"]].max(axis=1),
+                      "area-under-median(max)" : df[["area-under-median(age1)", "area-under-median(age2)", "area-under-median(age3)", "area-under-median(age4)"]].max(axis=1),
+                      "count-under-median(max)" : df[["count-under-median(age1)", "count-under-median(age2)", "count-under-median(age3)", "count-under-median(age4)"]].max(axis=1)
                       })
     
     # Merge photo sensitivity
