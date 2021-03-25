@@ -279,7 +279,7 @@ rf_random = RandomizedSearchCV(estimator=RandomForestClassifier(),
                                n_iter = 10, 
                                cv = 5, 
                                verbose=2, 
-                               random_state=42, 
+                               random_state=42,
                                n_jobs = -1, 
                                scoring='roc_auc')
 # Fit the random search model
@@ -292,7 +292,7 @@ model.fit(x, y)
 #%%
 plt.close('all')
 fig, ax = plt.subplots(figsize=(16, 9))
-plot_roc_curve(model, x, y, label="all", color="b-", ax=ax)       
+plot_roc_curve(model, x, y, label="all", color="b-", ax=ax)
 # plot_roc_curve(model, x_test, y_test, label="test", color="g-", ax=ax)
 ax = set_roc_plot_template(ax)
 # ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier{(1,)}\nTrain samples: Flood:{np.bincount(y_train.astype(int))[1]:,}, Non-Flood:{np.bincount(y_train.astype(int))[0]:,}\nTest samples: Flood:{np.bincount(y_test.astype(int))[1]:,}, Non-Flood:{np.bincount(y_test.astype(int))[0]:,}')

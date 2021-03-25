@@ -151,7 +151,7 @@ def plot_multiple(df, x, xlim=None, kde=True, multiple="layer", binwidth=None):
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
 root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
-root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210224\Fig"
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210325\Fig"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 strip_id = "402"
@@ -272,17 +272,26 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     #%%
     df.loc[df["label"] == 0, "label"] = "Normal"
     df.loc[df["label"] == 1, "label"] = "Flood"
-    df = df[["label"] + df.columns[-29:-1].tolist()]
+    df = df[["label"] + df.columns[-34:-1].tolist()]
     #%%
     plt.close('all')
-    folder_save = os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210316\Fig", strip_id) 
+    folder_save = os.path.join(root_save, strip_id) 
     os.makedirs(folder_save, exist_ok=True)
     # Median
     fig, ax = plot_single(df, "median", xlim=(-25, 0))
     fig.savefig(os.path.join(folder_save, "Median.png"), bbox_inches="tight")
     fig, ax = plot_multiple(df, x=["median(age1)", "median(age2)", "median(age3)", "median(age4)"], xlim=(-25, 0))
     fig.savefig(os.path.join(folder_save, "Median(age-group).png"), bbox_inches="tight")
-    
+#%%
+    fig, ax = plot_single(df, "median(min)", xlim=(-25, 0))
+    fig.savefig(os.path.join(folder_save, "Median(min).png"), bbox_inches="tight")
+    fig, ax = plot_single(df, "median-min(max)", xlim=(0, 20))
+    fig.savefig(os.path.join(folder_save, "Median-min(max).png"), bbox_inches="tight")
+    fig, ax = plot_single(df, "max-min(max)", xlim=(0, 20))
+    fig.savefig(os.path.join(folder_save, "Max-min(max).png"), bbox_inches="tight")
+    fig, ax = plot_single(df, "area-under-median(max)", xlim=(0, 30))
+    fig.savefig(os.path.join(folder_save, "Area-under-median(max).png"), bbox_inches="tight")
+#%%
     # Median-min
     fig, ax = plot_single(df, "median-min", xlim=(0, 20))
     fig.savefig(os.path.join(folder_save, "Median-min.png"), bbox_inches="tight")
@@ -308,29 +317,3 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     fig, ax = plot_multiple(df, x=["count-under-median(age1)", "count-under-median(age2)", "count-under-median(age3)", "count-under-median(age4)"], xlim=(0, 10), kde=False, multiple="dodge", binwidth=0.5)
     fig.savefig(os.path.join(folder_save, "Count-under-median.png"), bbox_inches="tight")
 #%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
