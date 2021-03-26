@@ -145,7 +145,7 @@ root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_d
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210317\Fig"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-strip_id = "304"
+strip_id = "303"
 #%%
 # for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
 print(strip_id)
