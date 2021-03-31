@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
+from icedumpy.io_tools import save_model
+from icedumpy.plot_tools import plot_roc_curve, plot_precision_recall_curve, set_roc_plot_template
 # %%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
@@ -369,98 +370,18 @@ model = model.best_estimator_
 
 # Re-train with best_estimators_ (Should be the same as previous best_estimator but want to make sure)
 model.fit(x_train, y_train)
+#%%
 fig, ax = plt.subplots(figsize=(16, 9))
 ax, _, _, _, _, _ = plot_roc_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
 ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
 ax = set_roc_plot_template(ax)
+
+fig, ax = plt.subplots(figsize=(16, 9))
+ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
+ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
+ax = set_roc_plot_template(ax)
 #%%
-precision, recall, thresholds = metrics.precision_recall_curve(y_test, model.predict_proba(x_test)[:, -1])
-fpr, tpr, thresholds = metrics.roc_curve(y_test, model.predict_proba(x_test)[:, -1])
-plt.plot(precision, recall)
-plt.plot(fpr, tpr)
-plt.grid()
+folder_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season"
+path_model = os.path.join(folder_model, f"{strip_id}.joblib")
+save_model(path_model, model)
 #%%
-def plot_roc_curve(model, x, y, label, color='b-', ax=None):
-    """
-    Plot roc curve.
-
-    Parameters
-    ----------
-    model: sklearn's model
-        Model for predict x.
-    x: numpy array (N, M)
-        Input data to the model.
-    y: numpy array (N,)
-        Input label.
-    label: str
-        Plot label.
-    color: str
-        Line color.
-    ax: matplotlib suplots ax (optional), default None
-        Axis for plot.
-
-    Examples
-    --------
-    >>> 
-
-    Returns
-    -------
-    ax, y_predict_prob, fpr, tpr, thresholds, auc
-    """
-    if ax is None:
-        fig, ax = plt.subplots()
-    y_predict_prob = model.predict_proba(x)
-    precision, recall, thresholds = metrics.roc_curve(y, y_predict_prob[:, 1])
-    auc = metrics.auc(precision, recall)
-    ax.plot(precision, recall, color, label=f"{label} (AUC = {auc:.4f})")
-    ax.plot(fpr, fpr, "--")
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-
-    return ax, y_predict_prob, precision, recall, thresholds, auc
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
