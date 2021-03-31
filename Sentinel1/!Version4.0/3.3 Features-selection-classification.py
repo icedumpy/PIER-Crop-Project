@@ -12,8 +12,6 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 # %%
-
-
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
     '''
@@ -323,12 +321,6 @@ pprint(random_grid)
 # %%
 x = df[model_parameters_1].values
 y = df["label"].values
-
-x_train = df.loc[~(df["ext_act_id"] % 10).isin([8, 9]), model_parameters_1].values
-x_test = df.loc[(df["ext_act_id"] % 10).isin([8, 9]), model_parameters_1].values
-
-y_train = df.loc[~(df["ext_act_id"] % 10).isin([8, 9]), "label"].values
-y_test = df.loc[(df["ext_act_id"] % 10).isin([8, 9]), "label"].values
 # %%
 model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                            param_distributions=random_grid,
@@ -339,30 +331,30 @@ model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                            n_jobs=-1,
                            scoring='roc_auc')
 # Fit the random search model
-model.fit(x_train, y_train)
+model.fit(x, y)
 model = model.best_estimator_
 
 fig, ax = plt.subplots(figsize=(16, 9))
 ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color="g-", label="all", ax=ax)
 ax = set_roc_plot_template(ax)
-# %% Parameters_1
-fig, ax = plt.subplots(figsize=(16, 9))
-# ax, _, _, _, _, _ = plot_roc_curve(model, x_train, y_train, color="g-", label="train_1", ax=ax)
-ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="r-", label="test_1", ax=ax)
-ax = set_roc_plot_template(ax)
-# %% Parameters_2
-x = df[model_parameters_2].values
-y = df["label"].values
+#%% 
+# Calculate bce loss
+df = df.assign(predict_proba = model.predict_proba(x)[:, 1])
+df.loc[df["predict_proba"] == 0, "predict_proba"] = 1e-7
+df.loc[df["predict_proba"] == 1, "predict_proba"] = 1-1e-7
+df = df.assign(bce_loss=-(df["label"]*np.log(df["predict_proba"]))-((1-df["label"])*np.log(1-df["predict_proba"])))
 
-x_train = df.loc[~(df["ext_act_id"] % 10).isin([8, 9]), model_parameters_2].values
-x_test = df.loc[(df["ext_act_id"] % 10).isin([8, 9]), model_parameters_2].values
+# Drop high bce_loss data (95th percentile)
+df = df[df["bce_loss"] < df["bce_loss"].quantile(0.95)]
+#%%
+# Now we have higher data quality
+x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters_1].values
+x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), model_parameters_1].values
 
-y_train = df.loc[~(df["ext_act_id"] % 10).isin([8, 9]), "label"].values
-y_test = df.loc[(df["ext_act_id"] % 10).isin([8, 9]), "label"].values
-
-# Use the random grid to search for best hyperparameters
-# Random search of parameters, using 3 fold cross validation,
-# search across 100 different combinations, and use all available cores
+y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+#%%
+# Retrain model
 model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                            param_distributions=random_grid,
                            n_iter=10,
@@ -375,11 +367,58 @@ model = RandomizedSearchCV(estimator=RandomForestClassifier(),
 model.fit(x_train, y_train)
 model = model.best_estimator_
 
+# Re-train with best_estimators_ (Should be the same as previous best_estimator but want to make sure)
+model.fit(x_train, y_train)
 fig, ax = plt.subplots(figsize=(16, 9))
-# ax, _, _, _, _, _ = plot_roc_curve(model, x_train, y_train, color="g-", label="train_2", ax=ax)
-ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="r-", label="test_2", ax=ax)
+ax, _, _, _, _, _ = plot_roc_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
+ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
 ax = set_roc_plot_template(ax)
-# %%
+#%%
+precision, recall, thresholds = metrics.precision_recall_curve(y_test, model.predict_proba(x_test)[:, -1])
+fpr, tpr, thresholds = metrics.roc_curve(y_test, model.predict_proba(x_test)[:, -1])
+plt.plot(precision, recall)
+plt.plot(fpr, tpr)
+plt.grid()
+#%%
+def plot_roc_curve(model, x, y, label, color='b-', ax=None):
+    """
+    Plot roc curve.
+
+    Parameters
+    ----------
+    model: sklearn's model
+        Model for predict x.
+    x: numpy array (N, M)
+        Input data to the model.
+    y: numpy array (N,)
+        Input label.
+    label: str
+        Plot label.
+    color: str
+        Line color.
+    ax: matplotlib suplots ax (optional), default None
+        Axis for plot.
+
+    Examples
+    --------
+    >>> 
+
+    Returns
+    -------
+    ax, y_predict_prob, fpr, tpr, thresholds, auc
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+    y_predict_prob = model.predict_proba(x)
+    precision, recall, thresholds = metrics.roc_curve(y, y_predict_prob[:, 1])
+    auc = metrics.auc(precision, recall)
+    ax.plot(precision, recall, color, label=f"{label} (AUC = {auc:.4f})")
+    ax.plot(fpr, fpr, "--")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+
+    return ax, y_predict_prob, precision, recall, thresholds, auc
+
 
 
 
