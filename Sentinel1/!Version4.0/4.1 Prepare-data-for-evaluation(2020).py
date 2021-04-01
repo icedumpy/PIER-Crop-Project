@@ -62,18 +62,3 @@ for strip_id in list_strip_id:
     for p_code, df_grp in df.groupby(["p_code"]):
         path_save = os.path.join(root_save , f"df_s1ab_temporal_p{p_code}_s{strip_id}.parquet")
         df_grp.to_parquet(path_save)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
