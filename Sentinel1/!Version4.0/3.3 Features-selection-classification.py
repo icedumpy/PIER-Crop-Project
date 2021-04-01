@@ -150,8 +150,6 @@ def get_area_under_median(arr_min_index, arr_value_under_median):
             arr_is_consecutive[i] = 2
         arr_consecutive_size[i] = len(arr_where_min_group)
     return arr_area_under_median, arr_is_consecutive, arr_consecutive_size
-
-
 # %%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5_2020"
