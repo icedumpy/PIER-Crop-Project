@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from icedumpy.io_tools import save_model
+from icedumpy.io_tools import save_model, save_h5
 from icedumpy.plot_tools import plot_roc_curve, plot_precision_recall_curve, set_roc_plot_template
 # %%
 @jit(nopython=True)
@@ -372,7 +372,7 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     #%%
     plt.close("all")
     fig, ax = plt.subplots(figsize=(16, 9))
-    ax, _, _, _, _, _ = plot_roc_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
+    ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
     ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
     ax = set_roc_plot_template(ax)
     ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
@@ -380,7 +380,7 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
      
     plt.close("all")
     fig, ax = plt.subplots(figsize=(16, 9))
-    ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
+    ax, y_predict_prob_pr, recall, precision, thresholds_pr, auc = plot_precision_recall_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
     ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
     ax = set_roc_plot_template(ax)
     ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
@@ -388,4 +388,15 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     #%%
     path_model = os.path.join(folder_model, f"{strip_id}.joblib")
     save_model(path_model, model)
+    
+    dict_roc_params = {"fpr":fpr,
+                       "tpr":tpr,
+                       "threshold_roc":thresholds_roc,
+                       "threshold_pr":thresholds_pr,
+                       "y_predict_prob_roc":y_predict_prob_roc[:, 1],
+                       "y_predict_prob_pr":y_predict_prob_pr[:, 1],
+                       "y_train":y_train}
+    save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params.h5"), dict_roc_params)
 #%%
+
+

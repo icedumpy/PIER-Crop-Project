@@ -1,11 +1,13 @@
 import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from tqdm import tqdm
 from numba import jit
 import geopandas as gpd
 from sklearn import metrics
-from icedumpy.io_tools import load_model
+import matplotlib.pyplot as plt
+from icedumpy.io_tools import load_model, load_h5
 from icedumpy.plot_tools import plot_roc_curve, plot_precision_recall_curve, set_roc_plot_template
 # %%
 @jit(nopython=True)
@@ -84,6 +86,57 @@ def get_area_under_median(arr_min_index, arr_value_under_median):
             arr_is_consecutive[i] = 2
         arr_consecutive_size[i] = len(arr_where_min_group)
     return arr_area_under_median, arr_is_consecutive, arr_consecutive_size
+
+def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
+    index = np.argmin(np.abs(fpr - selected_fpr))
+    return thresholds[index]
+
+def initialize_plot(ylim=(-20, 0)):
+    # Initialize figure
+    fig, ax = plt.subplots(figsize=(16, 9))
+
+    # Draw group age
+    ax.axvspan(0.0, 6.5, alpha=0.2, color='red')
+    ax.axvspan(6.5, 15, alpha=0.2, color='green')
+    ax.axvspan(15.0, 20, alpha=0.2, color='yellow')
+    ax.axvspan(20.0, 29, alpha=0.2, color='purple')
+
+    [ax.axvline(i, color="black") for i in [6.5, 15, 20]]
+
+    # Add group descriptions
+    ax.text(3, ylim[-1]+0.25, "0-40 days", horizontalalignment="center")
+    ax.text(10.5, ylim[-1]+0.25, "40-90 days", horizontalalignment="center")
+    ax.text(17.5, ylim[-1]+0.25, "90-120 days", horizontalalignment="center")
+    ax.text(24.5, ylim[-1]+0.25, "120+ days", horizontalalignment="center")
+
+    # Set y limits
+    ax.set_ylim(ylim)
+
+    # Add more ticks
+    ax.set_xticks(range(30))
+    ax.set_yticks(np.arange(*ylim))
+
+    return fig, ax
+
+def plot_sample(df):
+    if type(df) == pd.core.frame.DataFrame:
+        row = df.sample(n=1).squeeze()
+    else:
+        row = df.copy()
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    ax.plot(df.loc[df["ext_act_id"] == ext_act_id, columns].T.values, linestyle="--", marker="o")
+    try:
+        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
+    except:
+        pass
+    plt.grid(linestyle="--")
+    return fig, ax
+
+def plot_ext_act_id(df, ext_act_id):
+    plt.close("all")
+    print(df.loc[df["ext_act_id"] == ext_act_id, "predict_proba"])
+    plot_sample(df.loc[df["ext_act_id"] == ext_act_id])    
+
 #%%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_2020"
 root_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season"
@@ -91,6 +144,7 @@ root_shp = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_
 strip_id = "304"
 #%%
 model = load_model(os.path.join(root_model, f"{strip_id}.joblib"))
+dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params.h5"))
 
 # Define columns' group name
 columns = [f"t{i}" for i in range(0, 30)]
@@ -215,12 +269,16 @@ model_parameters = ['median', 'median(age1)', 'median(age2)', 'median(age3)', 'm
                     'photo_sensitive_f']
 #%%
 df = df.assign(predict_proba = model.predict_proba(df[model_parameters].values)[:, 1])
+threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_params["threshold_roc"], selected_fpr=0.1)
+print(threshold)
+df["predict"] = (df["predict_proba"] >= threshold).astype("uint8")
+#%%
+ice = df.groupby(["ext_act_id"]).mean()[["loss_ratio", "predict"]]
+ice["loss_ratio"] - ice["predict"]
 #%%
 df_temp = df[df["loss_ratio"] >= 0.8].copy()
 df_temp["p_code"] = df_temp["p_code"].astype("uint8")
-df_temp = df_temp.groupby(["ext_act_id"]).mean()[["p_code", "loss_ratio", "predict_proba"]]
-df_temp = df_temp[df_temp["predict_proba"] < 0.5]
-df_temp = df_temp.sort_values(by=["predict_proba"])
+df_temp = df_temp.groupby(["ext_act_id"]).mean()[["p_code", "loss_ratio", "predict"]]
 df_temp = df_temp.reset_index()
 #%%
 for p, df_temp_grp in df_temp.groupby(["p_code"]):
@@ -229,3 +287,23 @@ for p, df_temp_grp in df_temp.groupby(["p_code"]):
     gdf = gdf[gdf["ext_act_id"].isin(df_temp_grp["ext_act_id"])]
     gdf = pd.merge(gdf, df_temp_grp, on="ext_act_id", how="inner")
     gdf.to_file(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210402\shp", f"{strip_id}_{int(p)}.shp"))
+#%%
+ext_act_id = 9233851892
+plot_ext_act_id(df, ext_act_id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
