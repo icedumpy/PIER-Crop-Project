@@ -288,7 +288,7 @@ for p, df_temp_grp in df_temp.groupby(["p_code"]):
     gdf = pd.merge(gdf, df_temp_grp, on="ext_act_id", how="inner")
     gdf.to_file(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210402\shp", f"{strip_id}_{int(p)}.shp"))
 #%%
-ext_act_id = 9237220834
+ext_act_id = 9233734134
 plot_ext_act_id(df, ext_act_id)
 
 
