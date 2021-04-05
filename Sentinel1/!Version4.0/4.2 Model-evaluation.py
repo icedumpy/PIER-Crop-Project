@@ -273,8 +273,8 @@ threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_param
 print(threshold)
 df["predict"] = (df["predict_proba"] >= threshold).astype("uint8")
 #%%
-ice = df.groupby(["ext_act_id"]).mean()[["loss_ratio", "predict"]]
-ice["loss_ratio"] - ice["predict"]
+ice = df.groupby(["ext_act_id"]).mean()[["loss_ratio", "predict", "label"]]
+ice["Loss ratio - Predicted loss ratio"] = ice["loss_ratio"] - ice["predict"]
 #%%
 df_temp = df[df["loss_ratio"] >= 0.8].copy()
 df_temp["p_code"] = df_temp["p_code"].astype("uint8")
@@ -288,7 +288,7 @@ for p, df_temp_grp in df_temp.groupby(["p_code"]):
     gdf = pd.merge(gdf, df_temp_grp, on="ext_act_id", how="inner")
     gdf.to_file(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210402\shp", f"{strip_id}_{int(p)}.shp"))
 #%%
-ext_act_id = 9233851892
+ext_act_id = 9237220834
 plot_ext_act_id(df, ext_act_id)
 
 
