@@ -158,7 +158,7 @@ root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210317\Fig"
 folder_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-# strip_id = "304"
+strip_id = "303"
 # %%
 for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     print(strip_id)
@@ -170,7 +170,7 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(
         root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
     df = df.drop(columns="t30")  # Column "t30" is already out of season
-    df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 2 *
+    df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 2*
              len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
     
     # Define columns' group name
@@ -305,47 +305,49 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     # %%
     # Model hyperparameters
     # Number of trees in random forest
-    n_estimators = [20, 50, 100]
-    max_features = ['auto', 'sqrt']
-    max_depth = [int(x) for x in np.linspace(1, 50, num=3)]
-    min_samples_split = [3, 5, 10]
-    min_samples_leaf = [3, 5, 10]
+    n_estimators = [100, 200, 500]
+    criterion = ["gini", "entropy"]
+    max_features = ["sqrt", "log2", 0.2, 0.3, 0.4]
+    max_depth = [2, 5, 10]
+    min_samples_split = [2, 5, 10]
+    min_samples_leaf = [2, 5, 10]
     
     # Create the random grid
     random_grid = {'n_estimators': n_estimators,
+                   'criterion' : criterion,
                    'max_features': max_features,
                    'max_depth': max_depth,
                    'min_samples_split': min_samples_split,
                    'min_samples_leaf': min_samples_leaf}
     pprint(random_grid)
     # %%
-    x = df[model_parameters_1].values
-    y = df["label"].values
-    # %%
-    model = RandomizedSearchCV(estimator=RandomForestClassifier(),
-                               param_distributions=random_grid,
-                               n_iter=10,
-                               cv=5,
-                               verbose=2,
-                               random_state=42,
-                               n_jobs=-1,
-                               scoring='roc_auc')
-    # Fit the random search model
-    model.fit(x, y)
-    model = model.best_estimator_
+    # x = df[model_parameters_1].values
+    # y = df["label"].values
+    # # %%
+    # model = RandomizedSearchCV(estimator=RandomForestClassifier(),
+    #                            param_distributions=random_grid,
+    #                            n_iter=10,
+    #                            cv=5,
+    #                            verbose=2,
+    #                            random_state=42,
+    #                            n_jobs=-1,
+    #                            scoring='roc_auc')
+    # # Fit the random search model
+    # model.fit(x, y)
+    # model = model.best_estimator_
     
-    fig, ax = plt.subplots(figsize=(16, 9))
-    ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color="g-", label="all", ax=ax)
-    ax = set_roc_plot_template(ax)
-    #%% 
-    # Calculate bce loss
-    df = df.assign(predict_proba = model.predict_proba(x)[:, 1])
-    df.loc[df["predict_proba"] == 0, "predict_proba"] = 1e-7
-    df.loc[df["predict_proba"] == 1, "predict_proba"] = 1-1e-7
-    df = df.assign(bce_loss=-(df["label"]*np.log(df["predict_proba"]))-((1-df["label"])*np.log(1-df["predict_proba"])))
+    # fig, ax = plt.subplots(figsize=(16, 9))
+    # ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color="g-", label="all", ax=ax)
+    # ax = set_roc_plot_template(ax)
+    # #%% 
+    # # Calculate bce loss
+    # df = df.assign(predict_proba = model.predict_proba(x)[:, 1])
+    # df.loc[df["predict_proba"] == 0, "predict_proba"] = 1e-7
+    # df.loc[df["predict_proba"] == 1, "predict_proba"] = 1-1e-7
+    # df = df.assign(bce_loss=-(df["label"]*np.log(df["predict_proba"]))-((1-df["label"])*np.log(1-df["predict_proba"])))
     
-    # Drop high bce_loss data (95th percentile)
-    df = df[df["bce_loss"] < df["bce_loss"].quantile(0.95)]
+    # # Drop high bce_loss data (95th percentile)
+    # df = df[df["bce_loss"] < df["bce_loss"].quantile(0.95)]
     #%%
     # Now we have higher data quality
     x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters_1].values
@@ -357,18 +359,16 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     # Retrain model
     model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                                param_distributions=random_grid,
-                               n_iter=10,
+                               n_iter=20,
                                cv=5,
                                verbose=2,
                                random_state=42,
                                n_jobs=-1,
-                               scoring='roc_auc')
+                               scoring='f1'
+                               )
     # Fit the random search model
     model.fit(x_train, y_train)
     model = model.best_estimator_
-    
-    # Re-train with best_estimators_ (Should be the same as previous best_estimator but want to make sure)
-    model.fit(x_train, y_train)
     #%%
     plt.close("all")
     fig, ax = plt.subplots(figsize=(16, 9))

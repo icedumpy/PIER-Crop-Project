@@ -7,6 +7,7 @@ from numba import jit
 import geopandas as gpd
 from sklearn import metrics
 import matplotlib.pyplot as plt
+from icedumpy.df_tools import set_index_for_loc
 from icedumpy.io_tools import load_model, load_h5
 from icedumpy.plot_tools import plot_roc_curve, plot_precision_recall_curve, set_roc_plot_template
 # %%
@@ -134,7 +135,7 @@ def plot_sample(df):
 
 def plot_ext_act_id(df, ext_act_id):
     plt.close("all")
-    print(df.loc[df["ext_act_id"] == ext_act_id, "predict_proba"])
+    # print(df.loc[df["ext_act_id"] == ext_act_id, "predict_proba"])
     plot_sample(df.loc[df["ext_act_id"] == ext_act_id])    
 
 #%%
@@ -144,6 +145,7 @@ root_shp = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_
 strip_id = "304"
 #%%
 model = load_model(os.path.join(root_model, f"{strip_id}.joblib"))
+model.n_jobs = -1
 dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params.h5"))
 
 # Define columns' group name
@@ -268,42 +270,70 @@ model_parameters = ['median', 'median(age1)', 'median(age2)', 'median(age3)', 'm
                     'count-under-median(age3)', 'count-under-median(age4)',
                     'photo_sensitive_f']
 #%%
+df = df.reset_index(drop=True)
 df = df.assign(predict_proba = model.predict_proba(df[model_parameters].values)[:, 1])
 threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_params["threshold_roc"], selected_fpr=0.1)
 print(threshold)
 df["predict"] = (df["predict_proba"] >= threshold).astype("uint8")
+
+df_plot = df.groupby(["ext_act_id"]).mean()[["loss_ratio", "predict", "label"]]
+df = set_index_for_loc(df, "ext_act_id")
+df_plot = df_plot.assign(error = np.abs(df_plot["predict"]-df_plot["loss_ratio"]))
+df_plot = df_plot.sort_values("error", ascending=False)
+df_plot = df_plot.assign(error_type = np.digitize(df_plot["error"], [0, 0.25, 0.5, 0.75], right=True))
 #%%
-ice = df.groupby(["ext_act_id"]).mean()[["loss_ratio", "predict", "label"]]
-ice["Loss ratio - Predicted loss ratio"] = ice["loss_ratio"] - ice["predict"]
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210506\Fig"
+for ext_act_id, row in df_plot.groupby(["error_type", "label"]).sample(n=50).iterrows():
+    actual_loss_ratio = row["loss_ratio"]
+    predicted_loss_ratio = row["predict"]
+    error = row["error"]
+    error_type = int(row["error_type"])
+    
+    plt.close("all")
+    plot_ext_act_id(df, ext_act_id)
+    plt.suptitle(f"Strip_id: {strip_id}\nActual loss ratio: {actual_loss_ratio}\nPredicted loss ratio: {predicted_loss_ratio}")
+    
+    if actual_loss_ratio == 0:
+        folder_save = os.path.join(root_save, "Non-flood")
+    else:
+        folder_save = os.path.join(root_save, "Flood")
+    
+    plt.savefig(os.path.join(folder_save, f"{error_type}_{int(ext_act_id)}.png"))
 #%%
-df_temp = df[df["loss_ratio"] >= 0.8].copy()
-df_temp["p_code"] = df_temp["p_code"].astype("uint8")
-df_temp = df_temp.groupby(["ext_act_id"]).mean()[["p_code", "loss_ratio", "predict"]]
-df_temp = df_temp.reset_index()
-#%%
-for p, df_temp_grp in df_temp.groupby(["p_code"]):
-    path_shp = os.path.join(root_shp, f"vew_polygon_id_plant_date_disaster_20210202_{int(p)}.shp")
-    gdf = gpd.read_file(path_shp)
-    gdf = gdf[gdf["ext_act_id"].isin(df_temp_grp["ext_act_id"])]
-    gdf = pd.merge(gdf, df_temp_grp, on="ext_act_id", how="inner")
-    gdf.to_file(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210402\shp", f"{strip_id}_{int(p)}.shp"))
-#%%
-ext_act_id = 9233734134
+ext_act_id = 9233538190
+print(df.loc[ext_act_id])
 plot_ext_act_id(df, ext_act_id)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#%%
+plt.figure()
+plt.barh(model_parameters, df.loc[ext_act_id, model_parameters].iloc[2])
+#%%
+sns.histplot(df_plot["loss_ratio"]-df_plot["predict"], kde=True)
+plt.xlabel("Actual-predicted")
+#%%
+ice = df.groupby(["label"]).sample(n=37641)
+#%%
+ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, ice[model_parameters].values, ice["label"].values, label="2020")
+set_roc_plot_template(ax)
+#%%
+# temp = pd.DataFrame(data=[model_parameters, model.feature_importances_]).T
+# temp.columns = ["model_parameters", "feature_importances"]
+# plt.figure()
+# plt.barh(temp["model_parameters"], temp["feature_importances"])
+# temp = temp.sort_values("feature_importances", ascending=False)
+# plt.figure()
+# plt.barh(temp["model_parameters"], temp["feature_importances"])
+#%%
+# df_temp = df[df["loss_ratio"] >= 0.8].copy()
+# df_temp["p_code"] = df_temp["p_code"].astype("uint8")
+# df_temp = df_temp.groupby(["ext_act_id"]).mean()[["p_code", "loss_ratio", "predict"]]
+# df_temp = df_temp.reset_index()
+# #%%
+# for p, df_temp_grp in df_temp.groupby(["p_code"]):
+#     path_shp = os.path.join(root_shp, f"vew_polygon_id_plant_date_disaster_20210202_{int(p)}.shp")
+#     gdf = gpd.read_file(path_shp)
+#     gdf = gdf[gdf["ext_act_id"].isin(df_temp_grp["ext_act_id"])]
+#     gdf = pd.merge(gdf, df_temp_grp, on="ext_act_id", how="inner")
+#     gdf.to_file(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210402\shp", f"{strip_id}_{int(p)}.shp"))
+# #%%
+# ext_act_id = 9237744478
+# plot_ext_act_id(df, ext_act_id)
