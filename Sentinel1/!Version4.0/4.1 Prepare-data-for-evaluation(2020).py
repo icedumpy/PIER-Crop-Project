@@ -41,21 +41,23 @@ for strip_id in list_strip_id:
     df = df[df.columns[-4:].tolist() + df.columns[:-4].tolist()]
     
     # Get (t0-t29)
+    total_t = 35
+    
     columns = df.columns[11:].tolist()
     columns.insert(0, str((datetime.datetime.strptime(columns[0], "%Y%m%d")-datetime.timedelta(days=6)).date()).replace("-", ""))#%%
-    arr = np.zeros((len(df), 30), dtype="float32")
+    arr = np.zeros((len(df), total_t), dtype="float32")
     for index, (_, row) in tqdm(enumerate(df.iterrows()), total=len(df)):
         final_plant_date = row["final_plant_date"]
         final_plant_date = str(final_plant_date.date()).replace("-", "")
         index_final_plant_date = [i for i in range(len(columns)-1) if (final_plant_date > columns[i]) and (final_plant_date <= columns[i+1])][0]
         index_final_plant_date += 11
         
-        temporal = row[index_final_plant_date:index_final_plant_date+30].values
-        if len(temporal) != 30:    
-            temporal = np.hstack((temporal, np.zeros((30-len(temporal),))+np.nan))
+        temporal = row[index_final_plant_date:index_final_plant_date+total_t].values
+        if len(temporal) != total_t:    
+            temporal = np.hstack((temporal, np.zeros((total_t-len(temporal),))+np.nan))
         arr[index] = temporal
     df = df.iloc[:, :11]
-    df = df.assign(**{f"t{i}":arr[:, i] for i in range(30)})
+    df = df.assign(**{f"t{i}":arr[:, i] for i in range(total_t)})
     df = df[df.columns[:3].tolist() + df.columns[4:].tolist() + ["photo_sensitive_f"]]
     
     # Save

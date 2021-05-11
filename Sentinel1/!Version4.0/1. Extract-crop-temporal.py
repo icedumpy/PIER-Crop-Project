@@ -29,12 +29,14 @@ def get_column_index(columns_s1_temporal, date):
     raise Exception('Out of Index')
 
 def add_missing_columns(df_s1_overall):
+    df_s1_overall = df_s1_overall.copy()
     columns_s1_temporal_ideal = pd.date_range(df_s1_overall.columns[7], df_s1_overall.columns[-1], freq="6D")
     for column in columns_s1_temporal_ideal:
         column = str(column.date()).replace("-", "")
         if not column in df_s1_overall.columns[7:]:
             df_s1_overall = df_s1_overall.assign(**{column:np.nan})
-    df_s1_overall.iloc[:, 7:] = df_s1_overall[df_s1_overall.columns[7:]].reindex(sorted(df_s1_overall.columns[7:]), axis=1)
+            
+    df_s1_overall = df_s1_overall[df_s1_overall.columns[:7].tolist()+sorted(df_s1_overall.columns[7:])]
     return df_s1_overall
 #%%
 root_df_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
@@ -44,14 +46,14 @@ root_df_s1_overall = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pix
 os.makedirs(root_df_temporal, exist_ok=True)
 #%%
 list_strip_id = ["302", "303", "304", "305", "306", "401", "402", "403"]
-for strip_id in list_strip_id[4::5]:
+for strip_id in list_strip_id[1::2]:
     # Load df mapping
     df_mapping, _ = load_mapping(root_df_mapping, strip_id = strip_id)
     df_mapping = df_mapping.loc[(df_mapping["tier"] == 1) & df_mapping["is_within"]]
     list_p = df_mapping["p_code"].unique().tolist()
     
     # Set dtypes
-    dict_dtypes = {f"t{i}":"float32" for i in range(31)}
+    dict_dtypes = {f"t{i}":"float32" for i in range(35)}
     dict_dtypes["new_polygon_id"] = "int32"
     dict_dtypes["PLANT_PROVINCE_CODE"] = "int32"
     dict_dtypes["PLANT_AMPHUR_CODE"] = "int32"
@@ -84,10 +86,10 @@ for strip_id in list_strip_id[4::5]:
         # Filter df_vew by final_plant_date (later or equal temporal first date)
         df_vew = df_vew.loc[df_vew["final_plant_date"] >= datetime.datetime.strptime(df_s1_overall.columns[7], "%Y%m%d")] # This is sentinal1(A|B) first date
 
-        # Change harvest date to plant date + 180 days
-        df_vew["final_harvest_date"] = df_vew["final_plant_date"] + datetime.timedelta(days=180)
+        # Change harvest date to plant date + 180 days (change to 210 (t35))
+        df_vew["final_harvest_date"] = df_vew["final_plant_date"] + datetime.timedelta(days=210)
 
-        # Want to get only the data that within the crop cycle (plantdate to plantdate+180days)
+        # Want to get only the data that within the crop cycle (plantdate to plantdate+210 days)
         list_df = []
         for vew in tqdm(df_vew.itertuples(), total=len(df_vew)):
             try:
@@ -98,15 +100,15 @@ for strip_id in list_strip_id[4::5]:
                 column_plant = get_column_index(columns_s1_temporal, date_plant)
                 column_harvest = get_column_index(columns_s1_temporal, date_harvest)
 
-                # Get pixel data (plant -> harvest) # 31 periods
+                # Get pixel data (plant -> harvest) # 35 periods
                 arr_s1_overall = df_s1_overall.loc[new_polygon_id]
 
                 arr_s1_temporal = arr_s1_overall[df_s1_overall.columns[7:]].values
                 if len(arr_s1_temporal.shape) == 1:
                     arr_s1_temporal = arr_s1_temporal.reshape(1, -1)
 
-                arr_s1_temporal = arr_s1_temporal[:, column_plant:column_harvest+1]
-                assert arr_s1_temporal.shape[-1] == 31
+                arr_s1_temporal = arr_s1_temporal[:, column_plant:column_harvest]
+                assert arr_s1_temporal.shape[-1] == 35
 
                 df = pd.DataFrame(arr_s1_temporal, columns=[f"t{i}" for i in range(arr_s1_temporal.shape[-1])])
                 df["new_polygon_id"] = new_polygon_id

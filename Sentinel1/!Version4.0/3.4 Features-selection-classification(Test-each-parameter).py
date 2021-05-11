@@ -265,6 +265,12 @@ def assign_sharp_drop(df):
 def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
+
+def plot_hist_each_class(df, x):
+    fig, ax = plt.subplots(figsize=(16, 9))
+    sns.histplot(df, x=x, hue="year(label)", stat="density", kde=True, common_norm=False, ax=ax)
+    ax.set_title(x)
+    return fig, ax
 # %%
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_2020"
@@ -362,9 +368,24 @@ df_2020 = assign_sharp_drop(df_2020)
 
 # Merge photo sensitivity
 df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
+
+# Merge 2018, 2019, 2020
+df_2020 = df_2020.drop(columns = ['is_within', 'tier', 'p_code'])
+df = df[df_2020.columns]
+df = pd.concat([df, df_2020])
+df["year"] = df["final_plant_date"].dt.year
+df["year(label)"] = df["year"].astype(str) + "(" + df["label"].astype(str) + ")"
+del df_2020
 #%% Plot 2019 vs 2020 vs class
-df.loc[df["label"] == 1, ]
+plt.close('all')
+x="min"
+fig, ax = plot_hist_each_class(df, x=x)
+fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210510\304", f"{x}.png"), bbox_inches="tight")
 #%%
+for x in model_parameters:
+    plt.close('all')
+    fig, ax = plot_hist_each_class(df, x=x)
+    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210510\304", f"{x}.png"), bbox_inches="tight")
 #%% Plot correlation
 # plt.close('all')
 # corrMatrix = df[model_parameters].corr()
