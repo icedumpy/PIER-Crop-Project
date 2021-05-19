@@ -251,7 +251,7 @@ def assign_under_median(df):
     })
     return df
 
-def assign_sharp_drop(df, include_age1=False):
+def assign_sharp_drop(df):
     df = df.copy()
     # Sharpest drop of each age
     df = df.assign(**{
@@ -262,27 +262,18 @@ def assign_sharp_drop(df, include_age1=False):
        "sharp_drop(age4)": df[columns_age3[-1:]+columns_age4].diff(axis=1).dropna(axis=1).min(axis=1),
     })
     
-    if include_age1:
-        # Get sharpest drop period (age1 or age2 or age3 or age4)
-        df = df.assign(**{
-            "sharpest_drop_period" : df[["sharp_drop(age1)", "sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].idxmin(axis=1)
-        })
-        # Get sharpest drop value and which "t{x}"
-        df = df.assign(**{
-            "sharpest_drop":df[["sharp_drop(age1)", "sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].min(axis=1),
-            "sharpest_drop_column" : df[columns].diff(axis=1).dropna(axis=1).idxmin(axis=1)
-        })
-    else:
-        df = df.assign(**{
-            "sharpest_drop_period" : df[["sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].idxmin(axis=1)
-        })
-        df = df.assign(**{
-            "sharpest_drop":df[["sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].min(axis=1),
-            "sharpest_drop_column" : df[columns_age2+columns_age3+columns_age4].diff(axis=1).dropna(axis=1).idxmin(axis=1)
-        })
+    # Get sharpest drop period (age1 or age2 or age3 or age4)
+    df = df.assign(**{
+        "sharpest_drop_period" : df[["sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].idxmin(axis=1)
+    })
+    # Get sharpest drop value and which "t{x}"
+    df = df.assign(**{
+        "sharpest_drop":df[["sharp_drop(age2)", "sharp_drop(age3)", "sharp_drop(age4)"]].min(axis=1),
+        "sharpest_drop_column" : df[columns_age2+columns_age3+columns_age4].diff(axis=1).dropna(axis=1).idxmin(axis=1)
+    })
     df["sharpest_drop_period"] = df["sharpest_drop_period"].str.slice(-2,-1).astype(int)
     
-    # Get backscatter coeff before and after sharpest drop (-1, 0, 1, 2, 3, 4, 5) before 6 days and after 30 days
+    # Get backscatter coeff before and after sharpest drop (-2, -1, 0, 1, 2, 3, 4, 5) before 12 days and after 30 days
     arr = np.zeros((len(df), 8), dtype="float32")
     for i, (_, row) in enumerate(df.iterrows()):
         column = int(row["sharpest_drop_column"][1:])
@@ -314,21 +305,10 @@ root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_2020"
 root_df_vew_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202"
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210317\Fig"
-folder_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season"
+root_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season-v2"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 strip_id = "304"
-
-model_parameters = ['median', 'median(age1)', 'median(age2)', 'median(age3)', 'median(age4)',
-                    'median-min', 'median-min(age1)', 'median-min(age2)', 'median-min(age3)', 'median-min(age4)',
-                    'min', 'min(age1)', 'min(age2)', 'min(age3)', 'min(age4)',
-                    'max-min', 'max-min(age1)', 'max-min(age2)', 'max-min(age3)', 'max-min(age4)',
-                    'area-under-median', 'area-under-median(age1)', 'area-under-median(age2)',
-                    'area-under-median(age3)', 'area-under-median(age4)',
-                    'count-under-median', 'count-under-median(age1)', 'count-under-median(age2)',
-                    'count-under-median(age3)', 'count-under-median(age4)', 'sharp_drop',
-                    'sharp_drop(age1)', 'sharp_drop(age2)', 'sharp_drop(age3)', 'sharp_drop(age4)',
-                    'photo_sensitive_f']
 
 # Model hyperparameters
 # Number of trees in random forest
@@ -385,42 +365,11 @@ print("Drop duplicates")
 df = df.drop_duplicates(subset=columns_large)
 df_2020 = df_2020.drop_duplicates(subset=columns_large)
 
-# Assign median
-print("Assign median")
-df = assign_median(df)
-df_2020 = assign_median(df_2020)
-
-# Assign median - min
-print("Assign median-min")
-df = assign_median_minus_min(df)
-df_2020 = assign_median_minus_min(df_2020)
-
-# Assign min value
-print("Assign min")
-df = assign_min(df)
-df_2020 = assign_min(df_2020)
-
-# Assign max-min value
-print("Assign max-min")
-df = assign_max_minus_min(df)
-df_2020 = assign_max_minus_min(df_2020)
-
-# Assign area|count under median
-print("Assign area under median")
-df = assign_under_median(df)
-df_2020 = assign_under_median(df_2020)
-
-df_temp = df.copy()
-df_2020_temp = df_2020.copy()
-
-df = df_temp.copy()
-df_2020 = df_2020_temp.copy()
-
 # Assign shapr drop
 print("Assign sharpdrop 2018, 2019")
-df = assign_sharp_drop(df, include_age1=False)
+df = assign_sharp_drop(df)
 print("Assign sharpdrop 2020")
-df_2020 = assign_sharp_drop(df_2020, include_age1=False)
+df_2020 = assign_sharp_drop(df_2020)
 
 # Merge photo sensitivity
 df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
@@ -439,7 +388,7 @@ df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5'
 #%%
 model_parameters = ["sharpest_drop_period", "sharpest_drop", 
     'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 
-    'drop_t3', 'drop_t4', 'drop_t5', 'photo_sensitive_f',
+    'drop_t3', 'drop_t4', 'drop_t5',
     ]
 #%%
 x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
@@ -462,7 +411,7 @@ model = RandomizedSearchCV(estimator=RandomForestClassifier(),
 model.fit(x_train, y_train)
 model = model.best_estimator_
 #%%
-plt.close("all")
+# plt.close("all")
 fig, ax = plt.subplots(figsize=(16, 9))
 for year, color in zip([2018, 2019, 2020], ["r-", "g-", "b-"]):
     try:
@@ -476,90 +425,72 @@ for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
     try:
         x = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), model_parameters].values
         y = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), 'label'].values
-        ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
+        ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
     except:
         pass
 ax = set_roc_plot_template(ax)
 ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_include_age1({include_age1})_ROC.png"))
+fig.savefig(os.path.join(root_model, f"{strip_id}_ROC.png"))
 #%%
-# plt.close("all")
-# fig, ax = plt.subplots(figsize=(16, 9))
-# ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
-# ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
-# ax = set_roc_plot_template(ax)
-# ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-# # fig.savefig(os.path.join(folder_model, f"{strip_id}_ROC.png"))
- 
-# plt.close("all")
-# fig, ax = plt.subplots(figsize=(16, 9))
-# ax, y_predict_prob_pr, recall, precision, thresholds_pr, auc = plot_precision_recall_curve(model, x_train, y_train, color="g-", label="trian", ax=ax)
-# ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
-# ax = set_roc_plot_template(ax)
-# ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-# # fig.savefig(os.path.join(folder_model, f"{strip_id}_Precision_Recall.png"))
-#%%
-# #%%
-# # Which age
-# plt.close('all')
-# sns.catplot(data=df, x="sharpest_drop_period", 
-#             col="year(label)",
-#             kind="count",
-#             col_order=sorted(df["year(label)"].unique().tolist()),
-#             sharey=False,
-#             height=5, aspect=0.8)
+path_model = os.path.join(root_model, f"{strip_id}.joblib")
+save_model(path_model, model)
 
-# # Graph before after
-# fig, ax = plt.subplots(figsize=(16, 9))
-# df.groupby(["year(label)"])[['drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2','drop_t3', 'drop_t4', 'drop_t5']].mean().T.plot(linewidth=2, ax=ax)
-# ax.grid("--")
-# ax.set_ylabel("Backscatter coefficient")
-# ax.set_xlabel("Time")
-# ax.legend(loc=4)
-# #%%
-# plt.close('all')
-# fig, ax = plt.subplots(figsize=(16, 9))
-# df.groupby(["year(label)"])[['sharpest_drop']].mean().T.plot.bar(ax=ax, rot=0)
-# ax.grid("--")
-# ax.set_ylabel("Drop value")
-# ax.legend(loc=4)
-# #%%
-# sns.catplot(data=df, x="sharpest_drop", 
-#             col="year(label)",
-#             kind="bar",
-#             col_order=sorted(df["year(label)"].unique().tolist()),
-#             sharey=False,
-#             height=5, aspect=0.8)
-# for x in model_parameters:
-#     plt.close('all')
-#     fig, ax = plot_hist_each_class(df, x=x)
-#     fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210510\304", f"{x}.png"), bbox_inches="tight")
-#%% Plot correlation
-# plt.close('all')
-# corrMatrix = df[model_parameters].corr()
-# corrMatrix0 = df.loc[df["label"] == 0, model_parameters].corr()
-# corrMatrix1 = df.loc[df["label"] == 1, model_parameters].corr()
-# plt.figure()
-# sns.heatmap(corrMatrix, xticklabels=1, yticklabels=1, annot=True, fmt=".2f")
-# plt.title("Correlation Matrix(nonFlood+Flood)")
-# plt.figure()
-# sns.heatmap(corrMatrix0, xticklabels=1, yticklabels=1, annot=True, fmt=".2f")
-# plt.title("Correlation Matrix(nonFlood)")
-# plt.figure()
-# sns.heatmap(corrMatrix1, xticklabels=1, yticklabels=1, annot=True, fmt=".2f")
-# plt.title("Correlation Matrix(Flood)")
+dict_roc_params = {"fpr":fpr,
+                   "tpr":tpr,
+                   "threshold_roc":thresholds_roc,
+                   "y_predict_prob_roc":y_predict_prob_roc[:, 1],
+                   "y_train":y_train}
+save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params.h5"), dict_roc_params)
 #%%
-# corrScore = df[model_parameters].corr().abs().unstack().sort_values(ascending=False).drop_duplicates()
-# # sns.histplot(corrScore, kde=True, bins=len(corrScore)//10)
-# plt.close('all')
-# plt.figure()
-# sns.histplot(df, x="sharp_drop", hue="label", stat="density", kde=True, common_norm=False)
-# plt.figure()
-# sns.histplot(df, x="sharp_drop(age1)", hue="label", stat="density", kde=True, common_norm=False)
-# plt.figure()
-# sns.histplot(df, x="sharp_drop(age2)", hue="label", stat="density", kde=True, common_norm=False)
-# plt.figure()
-# sns.histplot(df, x="sharp_drop(age3)", hue="label", stat="density", kde=True, common_norm=False)
-# plt.figure()
-# sns.histplot(df, x="sharp_drop(age4)", hue="label", stat="density", kde=True, common_norm=False)
-#%%
+
+# Evaluate out-sample
+# threshold = get_threshold_of_selected_fpr(fpr, thresholds_roc, 0.2)
+
+# # Predict and thresholding
+# df_test = df.loc[((df["ext_act_id"]%10).isin([8, 9]))]
+# df_test = df_test.assign(predict_proba = model.predict_proba(x_test)[:, -1])
+# df_test = df_test.assign(predict = (df_test["predict_proba"] >= threshold).astype("uint8"))
+
+# # Pixel-level performance
+# cnf_matrix = metrics.confusion_matrix(df_test["label"], df_test["predict"])
+# dt = 100*cnf_matrix[1, 1]/(cnf_matrix[1, 0]+cnf_matrix[1, 1])
+# fa = 100*cnf_matrix[0, 1]/(cnf_matrix[0, 0]+cnf_matrix[0, 1])
+# print(f"Out of sample pixel-level performance: dt({dt:.2f}%), fa({fa:.2f}%)")
+# #%%
+# ## Plot-level performance
+# df_plot = df_test.groupby("ext_act_id").mean()[["loss_ratio", "predict", "label"]]
+# #%%
+# sns.histplot(df_plot.loc[df_plot["label"] == 1, "loss_ratio"]-df_plot.loc[df_plot["label"] == 1, "predict"], kde=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
