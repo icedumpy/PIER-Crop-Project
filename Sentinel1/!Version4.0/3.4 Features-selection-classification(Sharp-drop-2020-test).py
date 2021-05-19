@@ -469,7 +469,7 @@ for include_age1 in [False, True]:
     ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
     ax = set_roc_plot_template(ax)
     ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_ROC.png"))
+    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_2020_test_include_age11({include_age1})_ROC.png"))
      
     plt.close("all")
     fig, ax = plt.subplots(figsize=(16, 9))
@@ -477,7 +477,7 @@ for include_age1 in [False, True]:
     ax, _, _, _, _, _ = plot_precision_recall_curve(model, x_test, y_test, color="b-", label="test", ax=ax)
     ax = set_roc_plot_template(ax)
     ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_Precision_Recall.png"))
+    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_2020_test_include_age1({include_age1})_Precision_Recall.png"))
     #%%
 # plt.close("all")
 # fig, ax = plt.subplots(figsize=(16, 9))

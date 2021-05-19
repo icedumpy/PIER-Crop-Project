@@ -438,7 +438,7 @@ del df_2020
 df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']] = df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']].subtract(df['drop_t-2'], axis=0)
 #%%
 model_parameters = ["sharpest_drop_period", "sharpest_drop", 
-    'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 
+    'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 
     'drop_t3', 'drop_t4', 'drop_t5', 'photo_sensitive_f',
     ]
 #%%
@@ -481,7 +481,7 @@ for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
         pass
 ax = set_roc_plot_template(ax)
 ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-# fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_ignore_age1({include_age1})_ROC.png"))
+fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210517\Fig", f"{strip_id}_include_age1({include_age1})_ROC.png"))
 #%%
 # plt.close("all")
 # fig, ax = plt.subplots(figsize=(16, 9))
