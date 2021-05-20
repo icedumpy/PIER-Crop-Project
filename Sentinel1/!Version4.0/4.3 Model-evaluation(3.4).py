@@ -171,7 +171,7 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
 root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal"
 root_df_s1_temporal_2020 = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_2020"
 root_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season-v2"
-root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210519\Fig"
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210519"
 root_shp = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged_shp"
 root_shp_2020 = r"F:\CROP-PIER\CROP-WORK\vew_2020\vew_polygon_id_plant_date_disaster_20210202_shp"
 
@@ -271,7 +271,7 @@ for disaster_type in ["Flood", "nonFlood"]:
         ax.set_yticks(np.arange(0, 1.1, 0.1))
         ax.set_title(f"{disaster_type}\nStrip_id: {strip_id}, Year: {year}")
         ax.grid("--")
-        fig.savefig(os.path.join(root_save, f"{disaster_type}_{strip_id}_{year}.png"), bbox_inches="tight")
+        fig.savefig(os.path.join(root_save, "Fig", f"{disaster_type}_{strip_id}_{year}.png"), bbox_inches="tight")
 # Plot error all in 1
 plt.close("all")
 fig, ax = plt.subplots(nrows=3, ncols=2, figsize=(16, 9))
@@ -294,7 +294,7 @@ for disaster_type in ["nonFlood", "Flood"]:
         ax_curr.grid("--")
         ax_curr.legend(loc=1)
 fig.suptitle(f"Strip_id: {strip_id}")
-fig.savefig(os.path.join(root_save, f"{strip_id}.png"), bbox_inches="tight")
+fig.savefig(os.path.join(root_save, "Fig", f"{strip_id}.png"), bbox_inches="tight")
 #%%
 for (p_code, shp_year), df_plot_grp in df_plot.groupby(["p_code", "shp_year"]):
     if shp_year == "2018-2019":
