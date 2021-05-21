@@ -42,6 +42,7 @@ ax.legend(loc="best")
 print(gdf_malison["is_within"].value_counts())
 fig.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210520\Malison.png", bbox_inches="tight")
 #%% Add PLANT_PROVINCE_CODE
+
 df_p = gdf_thailand.geometry.progress_apply(lambda val: gdf_malison.within(val))
 df_p = df_p.astype("uint8")
 gdf_malison = gdf_malison.assign(PLANT_PROVINCE_CODE=[gdf_thailand.at[idx, "ADM1_PCODE"][2:] for idx in df_p.idxmax(axis=0)])
