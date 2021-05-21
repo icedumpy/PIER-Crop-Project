@@ -306,8 +306,12 @@ for (p_code, shp_year), df_plot_grp in df_plot.groupby(["p_code", "shp_year"]):
     gdf = gdf[gdf["ext_act_id"].isin(df_plot_grp["ext_act_id"])]
     gdf = pd.merge(gdf, df_plot_grp, on="ext_act_id", how="inner")
     gdf.to_file(os.path.join(root_save, "shp", f"{strip_id}_{int(p_code)}_{shp_year}.shp"))
-
-
+#%%
+ext_act_id = 9199554199
+try:
+    plot_ext_act_id(df, ext_act_id)
+except:
+    pass
 
 
 
