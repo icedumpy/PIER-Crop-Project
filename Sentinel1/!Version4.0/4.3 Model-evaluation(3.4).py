@@ -90,6 +90,35 @@ def initialize_plot(ylim=(-20, 0)):
 
     return fig, ax
 
+def initialize_plot2(ylim1=(-20, 0), ylim2=(-10, 5)):
+    # Initialize figure
+    fig, ax = plt.subplots(figsize=(16, 9), nrows=1, ncols=2)
+
+    # Draw group age
+    ax[0].axvspan(0.0, 6.5, alpha=0.2, color='red')
+    ax[0].axvspan(6.5, 15, alpha=0.2, color='green')
+    ax[0].axvspan(15.0, 20, alpha=0.2, color='yellow')
+    ax[0].axvspan(20.0, 34, alpha=0.2, color='purple')
+
+    [ax[0].axvline(i, color="black") for i in [6.5, 15, 20]]
+
+    # Add group descriptions
+    ax[0].text(3, ylim1[-1]-0.25, "0-40 days", horizontalalignment="center")
+    ax[0].text(10.5, ylim1[-1]-0.25, "40-90 days", horizontalalignment="center")
+    ax[0].text(17.5, ylim1[-1]-0.25, "90-120 days", horizontalalignment="center")
+    ax[0].text(27.5, ylim1[-1]-0.25, "120+ days", horizontalalignment="center")
+
+    # Set y limits
+    ax[0].set_ylim(ylim1)
+    ax[1].set_ylim(ylim2)
+    
+    # Add more ticks
+    ax[0].set_xticks(range(0, 35, 2))
+    ax[0].set_yticks(np.arange(*ylim1))
+    ax[1].set_yticks(np.arange(*ylim2))
+    
+    return fig, ax
+
 def plot_sample(df):
     if type(df) == pd.core.frame.DataFrame:
         row = df.sample(n=1).squeeze()
@@ -98,32 +127,36 @@ def plot_sample(df):
     fig, ax = initialize_plot(ylim=(-20, -5))
     ax.plot(row[columns].values, linestyle="--", marker="o", color="blue")
 
-    # Plot mean, median (age1)
-    ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--",
-              linewidth=2.5, color="orange", label="Median (Age1)")
-
-    # Plot mean, median (age2)
-    ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--",
-              linewidth=2.5, color="gray", label="Median (age2)")
-
-    # Plot mean, median (age3)
-    ax.hlines(row["median(age3)"], xmin=15.0, xmax=20, linestyle="--",
-              linewidth=2.5, color="purple", label="Median (age3)")
-
-    # Plot mean, median (age4)
-    ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--",
-              linewidth=2.5, color="yellow", label="Median (age4)")
+    try:
+        # Plot mean, median (age1)
+        ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--",
+                  linewidth=2.5, color="orange", label="Median (Age1)")
+    
+        # Plot mean, median (age2)
+        ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--",
+                  linewidth=2.5, color="gray", label="Median (age2)")
+    
+        # Plot mean, median (age3)
+        ax.hlines(row["median(age3)"], xmin=15.0, xmax=20, linestyle="--",
+                  linewidth=2.5, color="purple", label="Median (age3)")
+    
+        # Plot mean, median (age4)
+        ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--",
+                  linewidth=2.5, color="yellow", label="Median (age4)")
+    except:
+        pass
+    
     try:
         fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
     except:
         pass
-    plt.grid(linestyle="--")
+    ax.grid(linestyle="--")
     return fig, ax
 
 def plot_ext_act_id(df, ext_act_id):
     plt.close("all")
     plot_sample(df.loc[df["ext_act_id"] == ext_act_id])  
-
+        
 def assign_sharp_drop(df):
     df = df.copy()
     # Sharpest drop of each age
@@ -312,6 +345,72 @@ try:
     plot_ext_act_id(df, ext_act_id)
 except:
     pass
+#%%
+inp = ["2020", "TH300603"] #["2020", "TH360202"] #["2020", "TH402202"] #["2019", "TH440307"] #["2019", "TH440317"] #["2019", "TH441202"] #["2019", "TH440607"] #["2019", "TH450206"] #["2018", "TH360704"]
+print(inp)
+shp_year = inp[0]
+pat_code = inp[1]
+p_code = str(int(pat_code[2:4]))
+a_code = int(pat_code[4:6])
+t_code = int(pat_code[6:8])
+if shp_year in ["2018", "2019"]:
+    path_shp = os.path.join(root_save, "shp", f"{strip_id}_{int(p_code)}_2018-2019.shp")
+else:
+    path_shp = os.path.join(root_save, "shp", f"{strip_id}_{int(p_code)}_2020.shp")
+gdf = gpd.read_file(path_shp)
 
+# False negative 
+list_ext_act_id_fn = gdf.loc[(gdf["label"] == 1) & (gdf["predict"] == 0) & (gdf["PLANT_AMPH"] == a_code) & (gdf["PLANT_TAMB"] == t_code), "ext_act_id"].tolist()
+list_ext_act_id_tp = gdf.loc[(gdf["label"] == 1) & (gdf["predict"] >  0) & (gdf["PLANT_AMPH"] == a_code) & (gdf["PLANT_TAMB"] == t_code), "ext_act_id"].tolist()
 
+for ext_act_id, df_grp in tqdm(df.loc[(df["ext_act_id"].isin(list_ext_act_id_fn))].groupby("ext_act_id")):
+    plt.close("all")
+    
+    # Plot dn, model params
+    fig, ax = initialize_plot2(ylim1=(-20, -5), ylim2=(-15, 5))
+    df_grp[columns_large].T.plot(ax=ax[0])
+    df_grp[model_parameters].T.plot.bar(ax=ax[1])
+    ax[1].tick_params('x', labelrotation=30)
+    ax[0].set_title(f"Backscatter (Threshold(FA20%: {threshold:.2f}))")
+    ax[1].set_title("Features")
+    ax[0].legend(ax[0].get_legend_handles_labels()[0], [f"{i:.4f}" for i in df_grp["predict_proba"].values], loc=4)
+    ax[1].get_legend().remove()
 
+    plt.grid("--")
+    fig.suptitle(f"False Negative\nS:{strip_id}, PAT:{pat_code}, Year:{shp_year}, EXT_ACT_ID:{int(ext_act_id)}\nPolygon area:{df_grp['polygon_area_in_square_m'].mean():.2f} (m\N{SUPERSCRIPT TWO})")
+
+    # Draw reported date
+    t = (pd.to_datetime(df_grp["START_DATE"].astype(str).str.slice(0, 10)) - df_grp["final_plant_date"]).iloc[0].days//6
+    ax[0].axvline(t, color="red", linestyle="--")
+
+    # Save figure
+    folder_name = pat_code + "_" + shp_year
+    folder_save = os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210525\Fig", folder_name, "FN")
+    os.makedirs(folder_save, exist_ok=True)
+    fig.savefig(os.path.join(folder_save, f"{int(ext_act_id)}.png"), bbox_inches="tight")
+
+for ext_act_id, df_grp in tqdm(df.loc[(df["ext_act_id"].isin(list_ext_act_id_tp))].groupby("ext_act_id")):
+    plt.close("all")
+    
+    # Plot dn, model params
+    fig, ax = initialize_plot2(ylim1=(-20, -5), ylim2=(-15, 5))
+    df_grp[columns_large].T.plot(ax=ax[0])
+    df_grp[model_parameters].T.plot.bar(ax=ax[1])
+    ax[1].tick_params('x', labelrotation=30)
+    ax[0].set_title(f"Backscatter (Threshold(FA20%: {threshold:.2f}))")
+    ax[1].set_title("Features")
+    ax[0].legend(ax[0].get_legend_handles_labels()[0], [f"{i:.4f}" for i in df_grp["predict_proba"].values], loc=4)
+    ax[1].get_legend().remove()
+    plt.grid("--")
+    fig.suptitle(f"True Positive\nS:{strip_id}, PAT:{pat_code}, Year:{shp_year}, EXT_ACT_ID:{int(ext_act_id)}\nPolygon area:{df_grp['polygon_area_in_square_m'].mean():.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{df_grp.loss_ratio.mean():.2f} <=> Predict:{df_grp['predict'].mean():.2f}")
+    
+    # Draw reported date
+    t = (pd.to_datetime(df_grp["START_DATE"].astype(str).str.slice(0, 10)) - df_grp["final_plant_date"]).iloc[0].days//6
+    ax[0].axvline(t, color="red", linestyle="--")
+    
+    # Save figure   
+    folder_name = pat_code + "_" + shp_year
+    folder_save = os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210525\Fig", folder_name, "TP")
+    os.makedirs(folder_save, exist_ok=True)
+    fig.savefig(os.path.join(folder_save, f"{int(ext_act_id)}.png"), bbox_inches="tight")
+#%%

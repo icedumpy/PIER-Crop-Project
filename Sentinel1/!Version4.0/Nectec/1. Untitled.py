@@ -12,7 +12,6 @@ gdf_tambon = gpd.read_file(path_gdf_tambon)
 #%%
 for file in os.listdir(root_df_vew):
     p_code = file.split(".")[0][-2:]
-    print(p_code)
     
     # Load vew (2015-2019)
     path_file = os.path.join(root_df_vew, file)
@@ -35,8 +34,7 @@ for file in os.listdir(root_df_vew):
     df.loc[df["DANGER_TYPE_NAME"].isna(), "DANGER_TYPE_NAME"] = "ไม่เกิดภัย"
 
     df["ADM3_PCODE"] = "TH"+(10000*df["PLANT_PROVINCE_CODE"]+100*df["PLANT_AMPHUR_CODE"]+df["PLANT_TAMBON_CODE"]).astype(int).astype(str)
-    pprint(df["DANGER_TYPE_NAME"].value_counts().to_dict())
-    print()
+    print(p_code, ":", df["DANGER_TYPE_NAME"].value_counts().to_dict())
     
     # Doing sth.
     for ADM3_PCODE, df_grp in df.groupby(["ADM3_PCODE"]):
@@ -70,6 +68,9 @@ for file in os.listdir(root_df_vew):
             gdf_tambon.loc[gdf_tambon["ADM3_PCODE"] == ADM3_PCODE, "disas_perc"] = df_loss["disaster_area_percentage"]
         except Exception as e:
             print(p_code, e)
+#%%
+gdf_tambon.iloc[:, -3:] = gdf_tambon.iloc[:, -3:].fillna(0)
+gdf_tambon.to_file(r"F:\CROP-PIER\CROP-WORK\Presentation\20210520\shp-123\thailand-tambon.shp")
 #%%
     
     
