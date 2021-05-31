@@ -308,7 +308,6 @@ root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210317\Fig"
 root_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season-v2"
 
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-strip_id = "304"
 
 # Model hyperparameters
 # Number of trees in random forest
@@ -336,111 +335,112 @@ columns_age2 = [f"t{i}" for i in range(7, 15)]  # 42-89
 columns_age3 = [f"t{i}" for i in range(15, 20)]  # 90-119
 columns_age4 = [f"t{i}" for i in range(20, 30)]  # 120-179
 # %%
-print(strip_id)
+for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
+    print(strip_id)
 
-# Load df rice code
-df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
-df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
-
-# Load df pixel value (2018-2019)
-df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(
-    root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-df = df.rename(columns = {"PLANT_PROVINCE_CODE" : "p_code"})
-df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 2*
-         len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
-
-# Load df pixel value (2020)
-df_2020 = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal_2020, file)) for file in os.listdir(root_df_s1_temporal_2020) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-df_2020 = df_2020[df_2020[columns_large].isna().sum(axis=1) <= 3]
-df_2020 = df_2020[(df_2020["ext_act_id"].isin(np.random.choice(df_2020.loc[df_2020["loss_ratio"] == 0, "ext_act_id"].unique(), 2*
-         len(df_2020.loc[df_2020["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df_2020["loss_ratio"] >= 0.8)]
-
-# Convert power to db
-print("Convert to dB")
-df = convert_power_to_db(df, columns_large)
-df_2020 = convert_power_to_db(df_2020, columns_large)
-
-# Drop duplicates
-print("Drop duplicates")
-df = df.drop_duplicates(subset=columns_large)
-df_2020 = df_2020.drop_duplicates(subset=columns_large)
-
-# Assign shapr drop
-print("Assign sharpdrop 2018, 2019")
-df = assign_sharp_drop(df)
-print("Assign sharpdrop 2020")
-df_2020 = assign_sharp_drop(df_2020)
-
-# Merge photo sensitivity
-df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
-
-# Merge 2018, 2019, 2020
-print("Merge df")
-df_2020 = df_2020.drop(columns = ['is_within', 'tier'])
-df = df[df_2020.columns]
-df = pd.concat([df, df_2020])
-df["year"] = df["final_plant_date"].dt.year
-df["year(label)"] = df["year"].astype(str) + "(" + df["label"].astype(str) + ")"
-del df_2020
-
-# Normalize [drop_t-1, drop_t5] by subtracting drop_t-2
-df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']] = df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']].subtract(df['drop_t-2'], axis=0)
-#%%
-model_parameters = ["sharpest_drop_period", "sharpest_drop", 
-    'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 
-    'drop_t3', 'drop_t4', 'drop_t5',
-    ]
-#%%
-x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-
-y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-#%%
-# Retrain model
-model = RandomizedSearchCV(estimator=RandomForestClassifier(),
-                           param_distributions=random_grid,
-                           n_iter=20,
-                           cv=5,
-                           verbose=2,
-                           random_state=42,
-                           n_jobs=-1,
-                           scoring='f1'
-                           )
-# Fit the random search model
-model.fit(x_train, y_train)
-model = model.best_estimator_
-#%%
-# plt.close("all")
-fig, ax = plt.subplots(figsize=(16, 9))
-for year, color in zip([2018, 2019, 2020], ["r-", "g-", "b-"]):
-    try:
-        x = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), model_parameters].values
-        y = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), 'label'].values
-        ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x, y, color=color, label=f"Train{year}({len(df.loc[(~(df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
-    except:
-        pass
-
-for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
-    try:
-        x = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), model_parameters].values
-        y = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), 'label'].values
-        ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
-    except:
-        pass
-ax = set_roc_plot_template(ax)
-ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-fig.savefig(os.path.join(root_model, f"{strip_id}_ROC.png"))
-#%%
-path_model = os.path.join(root_model, f"{strip_id}.joblib")
-save_model(path_model, model)
-
-dict_roc_params = {"fpr":fpr,
-                   "tpr":tpr,
-                   "threshold_roc":thresholds_roc,
-                   "y_predict_prob_roc":y_predict_prob_roc[:, 1],
-                   "y_train":y_train}
-save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params.h5"), dict_roc_params)
+    # Load df rice code
+    df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
+    df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
+    
+    # Load df pixel value (2018-2019)
+    df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(
+        root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+    df = df.rename(columns = {"PLANT_PROVINCE_CODE" : "p_code"})
+    df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 2*
+             len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
+    
+    # Load df pixel value (2020)
+    df_2020 = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal_2020, file)) for file in os.listdir(root_df_s1_temporal_2020) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+    df_2020 = df_2020[df_2020[columns_large].isna().sum(axis=1) <= 3]
+    df_2020 = df_2020[(df_2020["ext_act_id"].isin(np.random.choice(df_2020.loc[df_2020["loss_ratio"] == 0, "ext_act_id"].unique(), 2*
+             len(df_2020.loc[df_2020["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df_2020["loss_ratio"] >= 0.8)]
+    
+    # Convert power to db
+    print("Convert to dB")
+    df = convert_power_to_db(df, columns_large)
+    df_2020 = convert_power_to_db(df_2020, columns_large)
+    
+    # Drop duplicates
+    print("Drop duplicates")
+    df = df.drop_duplicates(subset=columns_large)
+    df_2020 = df_2020.drop_duplicates(subset=columns_large)
+    
+    # Assign shapr drop
+    print("Assign sharpdrop 2018, 2019")
+    df = assign_sharp_drop(df)
+    print("Assign sharpdrop 2020")
+    df_2020 = assign_sharp_drop(df_2020)
+    
+    # Merge photo sensitivity
+    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
+    
+    # Merge 2018, 2019, 2020
+    print("Merge df")
+    df_2020 = df_2020.drop(columns = ['is_within', 'tier'])
+    df = df[df_2020.columns]
+    df = pd.concat([df, df_2020])
+    df["year"] = df["final_plant_date"].dt.year
+    df["year(label)"] = df["year"].astype(str) + "(" + df["label"].astype(str) + ")"
+    del df_2020
+    
+    # Normalize [drop_t-1, drop_t5] by subtracting drop_t-2
+    df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']] = df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']].subtract(df['drop_t-2'], axis=0)
+    #%%
+    model_parameters = ["sharpest_drop_period", "sharpest_drop", 
+        'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 
+        'drop_t3', 'drop_t4', 'drop_t5',
+        ]
+    #%%
+    x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
+    x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
+    
+    y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+    y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
+    #%%
+    # Retrain model
+    model = RandomizedSearchCV(estimator=RandomForestClassifier(),
+                               param_distributions=random_grid,
+                               n_iter=20,
+                               cv=5,
+                               verbose=2,
+                               random_state=42,
+                               n_jobs=-1,
+                               scoring='f1'
+                               )
+    # Fit the random search model
+    model.fit(x_train, y_train)
+    model = model.best_estimator_
+    #%%
+    # plt.close("all")
+    fig, ax = plt.subplots(figsize=(16, 9))
+    for year, color in zip([2018, 2019, 2020], ["r-", "g-", "b-"]):
+        try:
+            x = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), model_parameters].values
+            y = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), 'label'].values
+            ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x, y, color=color, label=f"Train{year}({len(df.loc[(~(df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
+        except:
+            pass
+    
+    for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
+        try:
+            x = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), model_parameters].values
+            y = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["year"] == year), 'label'].values
+            ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['year'] == year)]):,})", ax=ax)
+        except:
+            pass
+    ax = set_roc_plot_template(ax)
+    ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
+    fig.savefig(os.path.join(root_model, f"{strip_id}_ROC.png"))
+    #%%
+    path_model = os.path.join(root_model, f"{strip_id}.joblib")
+    save_model(path_model, model)
+    
+    dict_roc_params = {"fpr":fpr,
+                       "tpr":tpr,
+                       "threshold_roc":thresholds_roc,
+                       "y_predict_prob_roc":y_predict_prob_roc[:, 1],
+                       "y_train":y_train}
+    save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params.h5"), dict_roc_params)
 #%%
 
 # Evaluate out-sample
