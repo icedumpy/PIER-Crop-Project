@@ -56,21 +56,20 @@ def get_pixel_location_from_coords(x, y, geotransform):
 root_raster = r"G:\!PIER\!FROM_2TB\Complete_VV_separate"
 root_raster_valid_mask = r"G:\!PIER\!FROM_2TB\s1_valid_mask"
 root_raster_rowcol = r"G:\!PIER\!FROM_2TB\s1_pixel_rowcol_map"
-root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged"
+root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_plant_info_official_polygon_disaster_all_rice_by_year"
 root_df_mapping_atTrue = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v3(at-True)"
-# root_df_mapping_atFalse = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v4(at-False)"
-root_df_mapping_atFalse = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v5(at-False)"
+root_df_mapping_atFalse = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_vew_plant_info_official_polygon_disaster_all_rice_by_year_mapping(at-False)"
 path_gdf_provinces = r"F:\CROP-PIER\CROP-WORK\!common_shapefiles\thailand\thailand-province.shp"
 os.makedirs(root_df_mapping_atFalse, exist_ok=True)
 
 gdf_provinces = gpd.read_file(path_gdf_provinces)
-#%%
+    #%%
 # list_strip_id = ["302", "303", "304", "305", "306", "401", "402", "403"]
 list_strip_id = ["101", "102", "103", "104", "105", "106", "107", "108", "109", 
-                  "201", "202", "203", "204", "205", "206", "207", "208",
-                  "301", "302", "303", "304", "305", "306",
-                  "401", "402", "403"]
-pbar_1 = tqdm(list_strip_id)
+                 "201", "202", "203", "204", "205", "206", "207", "208",
+                 "301", "302", "303", "304", "305", "306",
+                 "401", "402", "403"]
+pbar_1 = tqdm(list_strip_id[0::6])
 
 for strip_id in pbar_1:
     pbar_1.set_description(f"s{strip_id}")
@@ -99,7 +98,7 @@ for strip_id in pbar_1:
     list_p = [file.split(".")[0].split("_")[-2][1:] for file in os.listdir(root_df_mapping_atTrue) if file.split(".")[0].split("_")[-1][1:] == strip_id]
     pbar_2 = tqdm(list_p)
     
-    # Load df_vew and drop duplicate new_polygon_id
+    # Load df_vew
     for p in pbar_2:
         pbar_2.set_description(f"s{strip_id}_p{p}")
         path_df_mapping = os.path.join(root_df_mapping_atFalse, f"df_s1_polygon_id_rowcol_map_p{p}_s{strip_id}.parquet")
@@ -109,17 +108,22 @@ for strip_id in pbar_1:
         polygon_province = gdf_provinces.loc[gdf_provinces["ADM1_PCODE"] == f"TH{p}"].geometry.values[0]
         polygon_province.simplify(0.01)
         
-        df_vew = load_vew(root_df_vew, p)
-        df_vew = df_vew.drop_duplicates(subset=["new_polygon_id"])
+        df_vew = pd.concat([pd.read_parquet(os.path.join(root_df_vew, file)) for file in os.listdir(root_df_vew) if file.split(".")[0].split("_")[-2][1:] in [p]], ignore_index=True)
         
         tqdm.write("\nStart creating df_mapping")
         list_df_mapping_T1 = []
         list_df_mapping_T2 = []
         for df_vew_row in df_vew.itertuples():
-            polygon = create_polygon_from_wkt(df_vew_row.final_polygon)
+            polygon = create_polygon_from_wkt(df_vew_row.polygon)
+            # skip if polygon invalid
+            if not polygon.is_valid:
+                continue
             try:
                 # Get mapping row, col
-                masked, _ = mask(raster_rowcol, polygon, crop=True, nodata=-99, all_touched=False)
+                if polygon.type == "Polygon":
+                    masked, _ = mask(raster_rowcol, [polygon], crop=True, nodata=-99, all_touched=False)
+                else:
+                    masked, _ = mask(raster_rowcol, polygon, crop=True, nodata=-99, all_touched=False)
                 
                 # If can't mask(polygon is too small), get only one pixel at the centroid of the polygon
                 if (masked == -99).all():
@@ -143,13 +147,11 @@ for strip_id in pbar_1:
                 diff_ratio = polygon_area/(4*df_vew_row.TOTAL_ACTUAL_PLANT_AREA_IN_WA)
                 
                 # Check is within
-                if not polygon.is_valid:
-                    continue
                 is_within = polygon.within(polygon_province)
                 
                 # Tier1: polygon
                 if 0.75 <= diff_ratio <= 1.25:
-                    list_df_mapping_T1.append(pd.DataFrame({"new_polygon_id":df_vew_row.new_polygon_id,
+                    list_df_mapping_T1.append(pd.DataFrame({"ext_act_id":df_vew_row.ext_act_id,
                                                             "p_code":p,
                                                             "row":rows, 
                                                             "col":cols,
@@ -157,7 +159,7 @@ for strip_id in pbar_1:
                                                             "is_within":is_within}))
                 # Tier2: polygon
                 else:
-                    list_df_mapping_T2.append(pd.DataFrame({"new_polygon_id":df_vew_row.new_polygon_id,
+                    list_df_mapping_T2.append(pd.DataFrame({"ext_act_id":df_vew_row.ext_act_id,
                                                             "p_code":p,
                                                             "row":rows, 
                                                             "col":cols,
@@ -185,18 +187,3 @@ for strip_id in pbar_1:
             tqdm.write("\nSaving df_mapping")
             df_mapping.to_parquet(path_df_mapping)
 #%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

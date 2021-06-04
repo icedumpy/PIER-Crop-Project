@@ -10,11 +10,9 @@ def create_trs(path_dst, path_src, file_format='ENVI'):
     del outds
 #%%
 sat_type = "S1AB"
-root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_polygon_id_plant_date_disaster_merged"
-# root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_ext_act_id_rowcol_map_prov_scene_v5(at-False)_2020"
-root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v5(at-False)"
+root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_vew_plant_info_official_polygon_disaster_all_rice_by_year_mapping(at-False)"
 root_raster = os.path.join(r"C:\Users\PongporC\Desktop\temp", sat_type.upper())
-root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_pixel_from_mapping_v5"
+root_save = r"s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_pixel(at-False)"
 os.makedirs(root_save, exist_ok=True)
 #%%
 for file_raster in [file for file in os.listdir(root_raster) if file.endswith(".vrt")]:
