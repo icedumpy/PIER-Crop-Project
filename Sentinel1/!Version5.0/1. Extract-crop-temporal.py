@@ -130,6 +130,7 @@ for strip_id in list_strip_id:
         # Change harvest date to plant date + 180 days (change to 210 (t35))
         df_vew["final_harvest_date"] = df_vew["final_plant_date"] + datetime.timedelta(days=210)
         
+        54
         # Add loss ratio
         df_vew = df_vew.assign(loss_ratio = np.where(pd.isna(df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']).values, 0, df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']))
         
