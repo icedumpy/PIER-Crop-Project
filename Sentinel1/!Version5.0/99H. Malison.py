@@ -5,13 +5,11 @@ from tqdm import tqdm
 from numba import jit
 from tqdm import tqdm
 import seaborn as sns
-from pprint import pprint
-import matplotlib.pyplot as plt
+import geopandas as gpd
 from sklearn import metrics
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.ensemble import RandomForestClassifier
-from icedumpy.io_tools import save_model, save_h5
-from icedumpy.plot_tools import plot_roc_curve, plot_precision_recall_curve, set_roc_plot_template
+import matplotlib.pyplot as plt
+from icedumpy.df_tools import set_index_for_loc
+from icedumpy.io_tools import load_model, load_h5
 # %%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
@@ -60,9 +58,6 @@ def convert_power_to_db(df, columns):
     df[columns] = 10*np.log10(df[columns])
 
     # Assign label
-    df.loc[df["loss_ratio"] == 0, "label"] = 0
-    df.loc[df["loss_ratio"] >  0, "label"] = 1
-    df["label"] = df["label"].astype("uint8")
     return df
 
 def initialize_plot(ylim=(-20, 0)):
@@ -353,15 +348,25 @@ def assign_drop_rise(df):
         "sharp_drop_lag2_column" : df[columns_age1[-2:]+columns_age2+columns_age3+columns_age4].diff(periods=2, axis=1).idxmin(axis=1),
         "sharp_drop_lag3_column" : df[columns_age1[-3:]+columns_age2+columns_age3+columns_age4].diff(periods=3, axis=1).idxmin(axis=1)
     })
-    
-    # Sharpest_drop
     df = df.assign(**{
-        "sharpest_drop" : df[["sharp_drop_lag1", "sharp_drop_lag2", "sharp_drop_lag3"]].min(axis=1),
+        "sharp_rise_lag1" : df[columns_age1[-1:]+columns_age2+columns_age3+columns_age4].diff(periods=1, axis=1).max(axis=1),
+        "sharp_rise_lag2" : df[columns_age1[-2:]+columns_age2+columns_age3+columns_age4].diff(periods=2, axis=1).max(axis=1),
+        "sharp_rise_lag3" : df[columns_age1[-3:]+columns_age2+columns_age3+columns_age4].diff(periods=3, axis=1).max(axis=1),
+        "sharp_rise_lag1_column" : df[columns_age1[-1:]+columns_age2+columns_age3+columns_age4].diff(periods=1, axis=1).idxmax(axis=1),
+        "sharp_rise_lag2_column" : df[columns_age1[-2:]+columns_age2+columns_age3+columns_age4].diff(periods=2, axis=1).idxmax(axis=1),
+        "sharp_rise_lag3_column" : df[columns_age1[-3:]+columns_age2+columns_age3+columns_age4].diff(periods=3, axis=1).idxmax(axis=1)
     })
     
-    # Sharpest_drop  column
+    # Sharpest_drop, rise
+    df = df.assign(**{
+        "sharpest_drop" : df[["sharp_drop_lag1", "sharp_drop_lag2", "sharp_drop_lag3"]].min(axis=1),
+        "sharpest_rise" : df[["sharp_rise_lag1", "sharp_rise_lag2", "sharp_rise_lag3"]].max(axis=1)
+    })
+    
+    # Sharpest_drop, rise column
     df = df.assign(**{
         "sharpest_drop_column" : df.apply(lambda val: val[val[["sharp_drop_lag1", "sharp_drop_lag2", "sharp_drop_lag3"]].astype(float).idxmin()+"_column"], axis=1),
+        "sharpest_rise_column" : df.apply(lambda val: val[val[["sharp_rise_lag1", "sharp_rise_lag2", "sharp_rise_lag3"]].astype(float).idxmax()+"_column"], axis=1)
     })
     
     # Sharpest_drop age
@@ -369,19 +374,6 @@ def assign_drop_rise(df):
     df.loc[df["sharpest_drop_column"].isin(columns_age3), "sharpest_drop_age"] = 1
     df.loc[df["sharpest_drop_column"].isin(columns_age4), "sharpest_drop_age"] = 2
     df["sharpest_drop_age"] = df["sharpest_drop_age"].astype("uint8")
-    
-    # Find sharpest rise
-    arr = np.zeros((len(df), 1), dtype="float32")
-    for i, (_, row) in enumerate(df.iterrows()):
-        row_columns = columns[columns.index(row["sharpest_drop_column"])+1:]
-        row_data = row[row_columns]
-        sharpest_rise = max(row_data.diff(periods=1).max(), row_data.diff(periods=2).max(), row_data.diff(periods=3).max())
-        if np.isnan(sharpest_rise):
-            row_columns = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
-            row_data = row[row_columns]
-            sharpest_rise = max(row_data.diff(periods=1).max(), row_data.diff(periods=2).max(), row_data.diff(periods=3).max())
-        arr[i] = sharpest_rise
-    df = df.assign(sharpest_rise = arr)
     
     # Get backscatter coeff before and after sharpest drop (-2, -1, 0, 1, 2, 3, 4, 5) before 12 days and after 30 days
     arr = np.zeros((len(df), 8), dtype="float32")
@@ -400,28 +392,10 @@ def assign_drop_rise(df):
         "drop_t5" :  arr[:, 7],
     })
     return df
-# %%
-root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+#%%
 root_model = r"F:\CROP-PIER\CROP-WORK\Model\sentinel1\S1AB\Model-season-v3"
-path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
-
-# Model hyperparameters
-# Number of trees in random forest
-n_estimators = [100, 200, 500]
-criterion = ["gini", "entropy"]
-max_features = ["sqrt", "log2", 0.2, 0.3, 0.4]
-max_depth = [2, 5, 10]
-min_samples_split = [2, 5, 10]
-min_samples_leaf = [2, 5, 10]
-
-# Create the random grid
-random_grid = {'n_estimators': n_estimators,
-               'criterion' : criterion,
-               'max_features': max_features,
-               'max_depth': max_depth,
-               'min_samples_split': min_samples_split,
-               'min_samples_leaf': min_samples_leaf}
-pprint(random_grid)
+root_df_s1_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_malison_2020"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_temporal_malison_2020_predicted\v5"
 
 # Define columns' group name
 columns = [f"t{i}" for i in range(0, 30)]
@@ -430,209 +404,47 @@ columns_age1 = [f"t{i}" for i in range(0, 7)]  # 0-41
 columns_age2 = [f"t{i}" for i in range(7, 15)]  # 42-89
 columns_age3 = [f"t{i}" for i in range(15, 20)]  # 90-119
 columns_age4 = [f"t{i}" for i in range(20, 30)]  # 120-179
-# %%
-for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
-# for strip_id in ["403"]:
-    # strip_id = "304"
+model_parameters = [
+        'sharpest_drop', 'sharpest_rise', 'sharpest_drop_age',
+        'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3',
+        'drop_t4', 'drop_t5'
+]
+#%%
+list_df = []
+for strip_id in np.unique([file.split(".")[0][-3:] for file in os.listdir(root_df_s1_temporal)]):
     print(strip_id)
-    
-    # Load df rice code
-    df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
-    df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
-    #%%
-    # Load data
-    print("Loading data")
+    # Load model
+    model = load_model(os.path.join(root_model, f"{strip_id}_old.joblib"))
+    model.n_jobs = 1
+    dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params_old.h5"))
+    threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_params["threshold_roc"], selected_fpr=0.2)
+
+    # Load df
     df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-    df = df[df["in_season_rice_f"] == 1]
-    df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
-    df = df[(df["loss_ratio"] == 0) | (df["loss_ratio"] >= 0.8)]
-    df["PAT"] = df['PLANT_PROVINCE_CODE'].astype(str).str.zfill(2) + df['PLANT_AMPHUR_CODE'].astype(str).str.zfill(2) + df['PLANT_TAMBON_CODE'].astype(str).str.zfill(2)
-    
+    df[columns_large] = df[columns_large].replace({0: np.nan})
+    df = df[df[columns_large].isna().sum(axis=1) <= 4]
+
     # Convert power to db
-    print("Converting to dB")
     df = convert_power_to_db(df, columns_large)
     
-    print("Sampling data")
-    df = sampling_data(df)
-    
-    # Assign sharp drop, rise
-    print("Assigning sharp drop")
+    # Assign sharp drop
     df = assign_drop_rise(df)
-    
-    # Drop duplicates
-    print("Dropping duplicates")
-    df = df.drop_duplicates(subset=columns_large)
-    
-    # Merge photo sensitivity
-    print("Merging photo sensitivity")
-    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
-    
-    # Normalize [drop_t-1, drop_t5] by subtracting drop_t-2
+
+    # Normalize
     df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']] = df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']].subtract(df['drop_t-2'], axis=0)
-    #%%
-    model_parameters = [
-        'sharpest_drop', 'sharpest_rise', 'sharpest_drop_age',
-        'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3',
-        'drop_t4', 'drop_t5'
-    ]
-    #%%
-    x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-    x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-    y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-    y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-    #%%
-    # Define model
-    model = RandomizedSearchCV(estimator=RandomForestClassifier(),
-                               param_distributions=random_grid,
-                               n_iter=20,
-                               cv=5,
-                               verbose=2,
-                               random_state=42,
-                               n_jobs=-1,
-                               scoring='f1'
-                               )
-    # Fit the random search model
-    model.fit(x_train, y_train)
-    model = model.best_estimator_
-    #%%
-    # Fig separate year
-    plt.close("all")
-    fig, ax = plt.subplots(figsize=(16, 9))
-    for year, color in zip([2018, 2019, 2020], ["r-", "g-", "b-"]):
-        try:
-            x = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), model_parameters].values
-            y = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), 'label'].values
-            ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Train{year}({len(df.loc[(~(df['ext_act_id']%10).isin([8, 9])) & (df['final_crop_year'] == year)]):,})", ax=ax)
-        except:
-            pass
-    
-    for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
-        try:
-            x = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), model_parameters].values
-            y = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), 'label'].values
-            ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['final_crop_year'] == year)]):,})", ax=ax)
-        except:
-            pass
-    ax = set_roc_plot_template(ax)
-    ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(root_model, f"{strip_id}_ROC_separate_new.png"), bbox_inches='tight')
-    
-    # Fig all years
-    plt.close("all")
-    fig, ax = plt.subplots(figsize=(16, 9))
-    ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x_train, y_train, color="g-", label="Train", ax=ax)
-    ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="Test", ax=ax)
-    ax = set_roc_plot_template(ax)
-    ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(root_model, f"{strip_id}_ROC_new.png"), bbox_inches='tight')
-    #%%
-    path_model = os.path.join(root_model, f"{strip_id}_new.joblib")
-    save_model(path_model, model)
-    
-    dict_roc_params = {"fpr":fpr,
-                       "tpr":tpr,
-                       "threshold_roc":thresholds_roc,
-                       "y_predict_prob_roc":y_predict_prob_roc[:, 1],
-                       "y_train":y_train}
-    save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params_new.h5"), dict_roc_params)
-    #%%
-    # =============================================================================
-    # Old samping method
-    # =============================================================================
-    # Load data
-    print("Loading data")
-    df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-    df = df[df["in_season_rice_f"] == 1]
-    df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
-    df = df[(df["loss_ratio"] == 0) | (df["loss_ratio"] >= 0.8)]
-    df["PAT"] = df['PLANT_PROVINCE_CODE'].astype(str).str.zfill(2) + df['PLANT_AMPHUR_CODE'].astype(str).str.zfill(2) + df['PLANT_TAMBON_CODE'].astype(str).str.zfill(2)
-    
-    # Samping 
-    df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 
-                                                    len(df.loc[df["loss_ratio"] >= 0.8, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] >= 0.8)]
-    
-    # Convert power to db
-    print("Converting to dB")
-    df = convert_power_to_db(df, columns_large)
-    
-    # Assign sharp drop, rise.y
-    print("Assigning sharp drop")
-    df = assign_drop_rise(df)
-    
-    # Drop duplicates
-    print("Dropping duplicates")
-    df = df.drop_duplicates(subset=columns_large)
-    
-    # Merge photo sensitivity
-    print("Merging photo sensitivity")
-    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
-    
-    # Normalize [drop_t-1, drop_t5] by subtracting drop_t-2
-    df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']] = df[['drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3', 'drop_t4', 'drop_t5']].subtract(df['drop_t-2'], axis=0)
-    #%%
-    model_parameters = [
-        'sharpest_drop', 'sharpest_rise', 'sharpest_drop_age',
-        'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3',
-        'drop_t4', 'drop_t5'
-    ]
-    #%%
-    x_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-    x_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-    y_train = df.loc[~(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-    y_test = df.loc[(df["ext_act_id"]%10).isin([8, 9]), "label"].values
-    #%%
-    # Define model
-    model = RandomizedSearchCV(estimator=RandomForestClassifier(),
-                               param_distributions=random_grid,
-                               n_iter=20,
-                               cv=5,
-                               verbose=2,
-                               random_state=42,
-                               n_jobs=-1,
-                               scoring='f1'
-                               )
-    # Fit the random search model
-    model.fit(x_train, y_train)
-    model = model.best_estimator_
-    #%%
-    # Fig separate year
-    plt.close("all")
-    fig, ax = plt.subplots(figsize=(16, 9))
-    for year, color in zip([2018, 2019, 2020], ["r-", "g-", "b-"]):
-        try:
-            x = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), model_parameters].values
-            y = df.loc[(~(df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), 'label'].values
-            ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Train{year}({len(df.loc[(~(df['ext_act_id']%10).isin([8, 9])) & (df['final_crop_year'] == year)]):,})", ax=ax)
-        except:
-            pass
-    
-    for year, color in zip([2018, 2019, 2020], ["c-", "m-", "y-"]):
-        try:
-            x = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), model_parameters].values
-            y = df.loc[((df["ext_act_id"]%10).isin([8, 9])) & (df["final_crop_year"] == year), 'label'].values
-            ax, _, _, _, _, _ = plot_roc_curve(model, x, y, color=color, label=f"Test{year}({len(df.loc[((df['ext_act_id']%10).isin([8, 9])) & (df['final_crop_year'] == year)]):,})", ax=ax)
-        except:
-            pass
-    ax = set_roc_plot_template(ax)
-    ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(root_model, f"{strip_id}_ROC_separate_old.png"), bbox_inches='tight')
-    
-    # Fig all years
-    plt.close("all")
-    fig, ax = plt.subplots(figsize=(16, 9))
-    ax, y_predict_prob_roc, fpr, tpr, thresholds_roc, auc = plot_roc_curve(model, x_train, y_train, color="g-", label="Train", ax=ax)
-    ax, _, _, _, _, _ = plot_roc_curve(model, x_test, y_test, color="b-", label="Test", ax=ax)
-    ax = set_roc_plot_template(ax)
-    ax.set_title(f'ROC Curve: {strip_id}\nAll_touched(False), Tier(1,)\nTrain samples: Flood:{(y_train == 1).sum():,}, Non-Flood:{(y_train == 0).sum():,}\nTest samples: Flood:{(y_test == 1).sum():,}, Non-Flood:{(y_test == 0).sum():,}')
-    fig.savefig(os.path.join(root_model, f"{strip_id}_ROC_old.png"), bbox_inches='tight')
-    #%%
-    path_model = os.path.join(root_model, f"{strip_id}_old.joblib")
-    save_model(path_model, model)
-    
-    dict_roc_params = {"fpr":fpr,
-                       "tpr":tpr,
-                       "threshold_roc":thresholds_roc,
-                       "y_predict_prob_roc":y_predict_prob_roc[:, 1],
-                       "y_train":y_train}
-    save_h5(os.path.join(os.path.dirname(path_model), f"{strip_id}_metrics_params_old.h5"), dict_roc_params)
-    #%%
+
+    # Predict and thresholding
+    df = df.assign(predict_proba = model.predict_proba(df[model_parameters])[:, -1])
+    df = df.assign(predict = (df["predict_proba"] >= threshold).astype("uint8"))
+    df_plot = df.groupby("warranty_i").agg({"PLANT_PROV":pd.Series.mode,
+                                            "predict":np.mean})
+    df_plot = df_plot.rename(columns={"predict":"predicted_loss_ratio"})
+    df_plot = df_plot.reset_index(drop=False)
+    df_plot.to_parquet(os.path.join(root_save, f"{strip_id}.parquet"))
+    list_df.append(df_plot)
+#%%
+df_plot = pd.concat(list_df, ignore_index=True)
+df_plot = df_plot.groupby("warranty_i").agg({"PLANT_PROV":pd.Series.mode,
+                                             "predicted_loss_ratio":np.mean})
+df_plot = df_plot.reset_index(drop=False)
+df_plot.to_parquet(os.path.join(root_save, "Malison-result.parquet"))
