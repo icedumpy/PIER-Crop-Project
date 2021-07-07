@@ -99,25 +99,9 @@ def plot_sample(df):
     else:
         row = df.copy()
     fig, ax = initialize_plot(ylim=(-20, -5))
-    ax.plot(row[columns].values, linestyle="--", marker="o", color="blue")
-
-    # Plot mean, median (age1)
-    ax.hlines(row["median(age1)"], xmin=0, xmax=6.5, linestyle="--",
-              linewidth=2.5, color="orange", label="Median (Age1)")
-
-    # Plot mean, median (age2)
-    ax.hlines(row["median(age2)"], xmin=6.5, xmax=15.0, linestyle="--",
-              linewidth=2.5, color="gray", label="Median (age2)")
-
-    # Plot mean, median (age3)
-    ax.hlines(row["median(age3)"], xmin=15.0, xmax=20, linestyle="--",
-              linewidth=2.5, color="purple", label="Median (age3)")
-
-    # Plot mean, median (age4)
-    ax.hlines(row["median(age4)"], xmin=20.0, xmax=29, linestyle="--",
-              linewidth=2.5, color="yellow", label="Median (age4)")
+    ax.plot(row[columns_large].values, linestyle="--", marker="o", color="blue")
     try:
-        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\n Loss ratio:{row.loss_ratio:.2f}")
+        fig.suptitle(f"S:{strip_id}, P:{row.PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(row.ext_act_id)}\nPolygon area:{row.polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{row.loss_ratio:.2f}")
     except:
         pass
     plt.grid(linestyle="--")
@@ -125,7 +109,8 @@ def plot_sample(df):
 
 def plot_ext_act_id(df, ext_act_id):
     plt.close("all")
-    plot_sample(df.loc[df["ext_act_id"] == ext_act_id])  
+    fig, ax = plot_sample(df.loc[df["ext_act_id"] == ext_act_id])  
+    return fig, ax
 
 def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
@@ -271,13 +256,14 @@ model_parameters = [
     'drop_t-2', 'drop_t-1', 'drop_t0', 'drop_t1', 'drop_t2', 'drop_t3',
     'drop_t4', 'drop_t5'
 ]
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 # %%
 for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     # strip_id = "304"
     print(strip_id)
-    model = load_model(os.path.join(root_model, f"{strip_id}_old.joblib"))
+    model = load_model(os.path.join(root_model, f"{strip_id}_new.joblib"))
     model.n_jobs = -1
-    dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params_old.h5"))
+    dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params_new.h5"))
     threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_params["threshold_roc"], selected_fpr=0.2)
     
     # Load df rice code
@@ -331,12 +317,191 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
     fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210617\cnf_matrix", f"{strip_id}.png"), bbox_inches="tight")
+#%% Group by plot size
+ext_act_id_small  = df.groupby("ext_act_id").size().index[df.groupby("ext_act_id").size() == 1]
+ext_act_id_medium = df.groupby("ext_act_id").size().index[df.groupby("ext_act_id").size().between(2, 4)]
+ext_act_id_large = df.groupby("ext_act_id").size().index[df.groupby("ext_act_id").size() >= 5]
+#%% Get cnf_matrix
+labels = [0, 1, 2, 3, 4]
+cnf_matrix_small  = metrics.confusion_matrix(df_plot.loc[ext_act_id_small, "digitized_loss_ratio"], df_plot.loc[ext_act_id_small, "digitized_predict"], normalize="true", labels=labels)
+cnf_matrix_medium = metrics.confusion_matrix(df_plot.loc[ext_act_id_medium, "digitized_loss_ratio"], df_plot.loc[ext_act_id_medium, "digitized_predict"], normalize="true", labels=labels)
+cnf_matrix_large  = metrics.confusion_matrix(df_plot.loc[ext_act_id_large, "digitized_loss_ratio"], df_plot.loc[ext_act_id_large, "digitized_predict"], normalize="true", labels=labels)
+#%% Plot
+plt.close("all")
+
+# Feature imporance
+plt.barh(model_parameters, model.feature_importances_)
+plt.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\feature_importances_{strip_id}.png"), bbox_inches="tight")
+
+# Small
+fig, ax = plt.subplots()
+ax = sns.heatmap(cnf_matrix_small, annot=True, fmt=".3f",
+                 xticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 yticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 cmap="Blues", cbar=False, ax=ax)
+ax.tick_params(axis="y", labelrotation=0)
+ax.set_xlabel("Predicted label")
+ax.set_ylabel("True label")
+ax.set_title("1 pixel")
+fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\cnf_matrix_small_{strip_id}.png"), bbox_inches="tight")
+
+# Medium
+fig, ax = plt.subplots()
+ax = sns.heatmap(cnf_matrix_medium, annot=True, fmt=".3f",
+                 xticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 yticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 cmap="Blues", cbar=False, ax=ax)
+ax.tick_params(axis="y", labelrotation=0)
+ax.set_xlabel("Predicted label")
+ax.set_ylabel("True label")
+ax.set_title("2-4 pixels")
+fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\cnf_matrix_medium_{strip_id}.png"), bbox_inches="tight")
+
+# Large
+fig, ax = plt.subplots()
+ax = sns.heatmap(cnf_matrix_large, annot=True, fmt=".3f",
+                 xticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 yticklabels=["bin0", "bin1", "bin2", "bin3", "bin4"],
+                 cmap="Blues", cbar=False, ax=ax)
+ax.tick_params(axis="y", labelrotation=0)
+ax.set_xlabel("Predicted label")
+ax.set_ylabel("True label")
+ax.set_title("5+ pixels")
+fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\cnf_matrix_large_{strip_id}.png"), bbox_inches="tight")
+
+# Plot plot histogram
+fig, ax = plt.subplots()
+ax = sns.histplot(df.groupby("ext_act_id").size(), binrange=(0, 21), bins="auto", stat="probability", ax=ax)
+ax.set_xticks(range(1, 21))
+ax.set_xlabel("Number of pixels")
+ax.set_title("Histogram")
+fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\Pixel_histogram_{strip_id}.png"), bbox_inches="tight")
+
+# Plot plot cumulative histogram
+fig, ax = plt.subplots()
+ax = sns.histplot(df.groupby("ext_act_id").size(), binrange=(0, 21), bins="auto", stat="probability", cumulative=True, ax=ax)
+ax.set_xlim((0, 20))
+ax.set_xticks(range(1, 21))
+ax.set_xlabel("Number of pixels")
+ax.grid()
+fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\Pixel_histogram_cumsum_{strip_id}.png"), bbox_inches="tight")
+
+#Error visualization
+# Small
+df_plot_small = df_plot.loc[ext_act_id_small].copy()
+df_plot_small_FA = df_plot_small[(df_plot_small["digitized_loss_ratio"] == 0) & (df_plot_small["digitized_predict"] == 4)]
+df_plot_small_FA = df_plot_small_FA.sample(200)
+for ext_act_id in df_plot_small_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True0,Pred4\small\{ext_act_id}.png"), bbox_inches="tight")
+
+# Medium
+df_plot_medium = df_plot.loc[ext_act_id_medium].copy()
+df_plot_medium_FA = df_plot_medium[(df_plot_medium["digitized_loss_ratio"] == 0) & (df_plot_medium["digitized_predict"] == 4)]
+df_plot_medium_FA = df_plot_medium_FA.sample(200)
+for ext_act_id in df_plot_medium_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True0,Pred4\medium\{ext_act_id}.png"), bbox_inches="tight")
+
+# Large
+df_plot_large = df_plot.loc[ext_act_id_large].copy()
+df_plot_large_FA = df_plot_large[(df_plot_large["digitized_loss_ratio"] == 0) & (df_plot_large["digitized_predict"] == 4)]
+df_plot_large_FA = df_plot_large_FA.sample(200)
+for ext_act_id in df_plot_large_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True0,Pred4\large\{ext_act_id}.png"), bbox_inches="tight")
+    
+# Correct Bin4 
+# Small
+df_plot_small = df_plot.loc[ext_act_id_small].copy()
+df_plot_small_FA = df_plot_small[(df_plot_small["digitized_loss_ratio"] == 4) & (df_plot_small["digitized_predict"] == 4)]
+for ext_act_id in df_plot_small_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_AT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True4,Pred4\small\{ext_act_id}.png"), bbox_inches="tight")
+
+# Medium
+df_plot_medium = df_plot.loc[ext_act_id_medium].copy()
+df_plot_medium_FA = df_plot_medium[(df_plot_medium["digitized_loss_ratio"] == 4) & (df_plot_medium["digitized_predict"] == 4)]
+for ext_act_id in df_plot_medium_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True4,Pred4\medium\{ext_act_id}.png"), bbox_inches="tight")
+
+# Large
+df_plot_large = df_plot.loc[ext_act_id_large].copy()
+df_plot_large_FA = df_plot_large[(df_plot_large["digitized_loss_ratio"] == 4) & (df_plot_large["digitized_predict"] == 4)]
+for ext_act_id in df_plot_large_FA.index:
+    plt.close("all")
+    df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot(ylim=(-20, -5))
+    df_sample[columns_large].T.plot(ax=ax, marker="o")
+    ax.grid(linestyle="--")
+    for i, color in zip(df_sample["sharpest_drop_column"], colors):
+        ax.axvline(int(i[1:]), color=color, linestyle="--")
+    ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+    fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
+    fig.savefig(os.path.join(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210621\True4,Pred4\large\{ext_act_id}.png"), bbox_inches="tight")
+
 #%%
+df_plot_large = df_plot.loc[ext_act_id_large].copy()
+df_plot_large_FA = df_plot_large[(df_plot_large["digitized_loss_ratio"] == 1) & (df_plot_large["digitized_predict"] == 1)]
+ext_act_id = np.random.choice(df_plot_large_FA.index, 1)[0]
+plt.close("all")
+df_sample = df.loc[df["ext_act_id"] == ext_act_id]
+fig, ax = initialize_plot(ylim=(-20, -5))
+df_sample[columns_large].T.plot(ax=ax, marker="o")
+ax.grid(linestyle="--")
+for i, color in zip(df_sample["sharpest_drop_column"], colors):
+    ax.axvline(int(i[1:]), color=color, linestyle="--")
+ax.legend(ax.get_legend_handles_labels()[0], [f"Prob: {i:.4f}" for i in df_sample["predict_proba"].values], title=f"Threshold: {threshold:.4f}", loc=4)
+fig.suptitle(f"S:{strip_id}, P:{df_sample.iloc[0].PLANT_PROVINCE_CODE}, EXT_ACT_ID:{int(df_sample.iloc[0].ext_act_id)}\nPolygon area:{df_sample.iloc[0].polygon_area_in_square_m:.2f} (m\N{SUPERSCRIPT TWO})\nLoss ratio:{df_sample.iloc[0].loss_ratio:.2f}")
 
 
 
 
-df.groupby("ext_act_id").size()
+
+
+
+
 
 
 
