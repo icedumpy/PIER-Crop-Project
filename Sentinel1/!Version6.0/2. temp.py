@@ -10,7 +10,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import RandomizedSearchCV
-
+from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 #%%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
@@ -100,18 +100,22 @@ def assign_sharp_drop(df):
         ])+1)
         
         # Find which column
-        coef = df_grp[columns_model].diff(periods=periods, axis=1)*df_grp[columns_model]
+        drop = df_grp[columns_model].diff(periods=periods, axis=1)
+        coef = drop*df_grp[columns_model]
         flood_column = coef.max().idxmax()
-        flood_column = int(flood_column[1:])
+        
+        # Add drop value
+        df_grp["drop"] = drop[flood_column]
         
         # Add the most extreme diff*backscatter
         df_grp["drop*bc"] = coef.max(axis=1).values
         
         # Add sharp-drop column
+        flood_column = int(flood_column[1:])
         df_grp["drop_column"] = f"t{flood_column}"
         
         # Extract data (-2, +2)
-        df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]] = df_grp[[f"t{i}" for i in range(flood_column-2, flood_column+3)]].values
+        df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]] = df_grp[[f"t{i}" for i in range(flood_column-2, flood_column+3)]].values
         list_df.append(df_grp)
         
     # Concat and return
@@ -124,18 +128,23 @@ def convert_pixel_level_to_plot_level(df):
     list_dict_plot = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
         loss_ratio = df_grp.iloc[0]["loss_ratio"]
-        
+
         # Agg parameters
+        drop_min = df_grp["drop"].min()
+        drop_max = df_grp["drop"].max()
+        drop_p25 = df_grp["drop"].quantile(0.25)
+        drop_p50 = df_grp["drop"].quantile(0.50)
+        drop_p75 = df_grp["drop"].quantile(0.75)
         drop_bc_min = df_grp["drop*bc"].min()
         drop_bc_max = df_grp["drop*bc"].max()
         drop_bc_p25 = df_grp["drop*bc"].quantile(0.25)
         drop_bc_p50 = df_grp["drop*bc"].quantile(0.50)
         drop_bc_p75 = df_grp["drop*bc"].quantile(0.75)
-        drop_min = df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]].min(axis=0).values
-        drop_max = df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]].max(axis=0).values
-        drop_p25 = df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]].quantile(0.25, axis=0).values
-        drop_p50 = df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]].quantile(0.50, axis=0).values
-        drop_p75 = df_grp[["drop_t-2", "drop_t-1", "drop_t0", "drop_t+1", "drop_t+2"]].quantile(0.75, axis=0).values
+        bc_min = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].min(axis=0).values
+        bc_max = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].max(axis=0).values
+        bc_p25 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.25, axis=0).values
+        bc_p50 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.50, axis=0).values
+        bc_p75 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.75, axis=0).values
         drop_column = df_grp.iloc[0]["drop_column"]
         if drop_column in columns_age2:
             drop_age = 1
@@ -148,36 +157,41 @@ def convert_pixel_level_to_plot_level(df):
         dict_plot = {
             "ext_act_id":ext_act_id,
             "drop_age":drop_age,
-            "drop_bc_min":drop_bc_min,
-            "drop_bc_max":drop_bc_max,
-            "drop_bc_p25":drop_bc_p25,
-            "drop_bc_p50":drop_bc_p50,
-            "drop_bc_p75":drop_bc_p75,
-            "drop_t-2_min":drop_min[0],
-            "drop_t-1_min":drop_min[1],
-            "drop_t0_min" :drop_min[2],
-            "drop_t+1_min":drop_min[3],
-            "drop_t+2_min":drop_min[4],
-            "drop_t-2_max":drop_max[0],
-            "drop_t-1_max":drop_max[1],
-            "drop_t0_max" :drop_max[2],
-            "drop_t+1_max":drop_max[3],
-            "drop_t+2_max":drop_max[4],
-            "drop_t-2_p25":drop_p25[0],
-            "drop_t-1_p25":drop_p25[1],
-            "drop_t0_p25" :drop_p25[2],
-            "drop_t+1_p25":drop_p25[3],
-            "drop_t+2_p25":drop_p25[4],
-            "drop_t-2_p50":drop_p50[0],
-            "drop_t-1_p50":drop_p50[1],
-            "drop_t0_p50" :drop_p50[2],
-            "drop_t+1_p50":drop_p50[3],
-            "drop_t+2_p50":drop_p50[4],
-            "drop_t-2_p75":drop_p75[0],
-            "drop_t-1_p75":drop_p75[1],
-            "drop_t0_p75" :drop_p75[2],
-            "drop_t+1_p75":drop_p75[3],
-            "drop_t+2_p75":drop_p75[4],
+            "drop_min":drop_min,
+            "drop_max":drop_max,
+            "drop_p25":drop_p25,
+            "drop_p50":drop_p50,
+            "drop_p75":drop_p75,
+            "drop*bc_min":drop_bc_min,
+            "drop*bc_max":drop_bc_max,
+            "drop*bc_p25":drop_bc_p25,
+            "drop*bc_p50":drop_bc_p50,
+            "drop*bc_p75":drop_bc_p75,
+            "bc(t-2)_min":bc_min[0],
+            "bc(t-1)_min":bc_min[1],
+            "bc(t)_min"  :bc_min[2],
+            "bc(t+1)_min":bc_min[3],
+            "bc(t+2)_min":bc_min[4],
+            "bc(t-2)_max":bc_max[0],
+            "bc(t-1)_max":bc_max[1],
+            "bc(t)_max"  :bc_max[2],
+            "bc(t+1)_max":bc_max[3],
+            "bc(t+2)_max":bc_max[4],
+            "bc(t-2)_p25":bc_p25[0],
+            "bc(t-1)_p25":bc_p25[1],
+            "bc(t)_p25"  :bc_p25[2],
+            "bc(t+1)_p25":bc_p25[3],
+            "bc(t+2)_p25":bc_p25[4],
+            "bc(t-2)_p50":bc_p50[0],
+            "bc(t-1)_p50":bc_p50[1],
+            "bc(t)_p50"  :bc_p50[2],
+            "bc(t+1)_p50":bc_p50[3],
+            "bc(t+2)_p50":bc_p50[4],
+            "bc(t-2)_p75":bc_p75[0],
+            "bc(t-1)_p75":bc_p75[1],
+            "bc(t)_p75"  :bc_p75[2],
+            "bc(t+1)_p75":bc_p75[3],
+            "bc(t+2)_p75":bc_p75[4],
             "loss_ratio":loss_ratio
         }
         
@@ -187,13 +201,17 @@ def convert_pixel_level_to_plot_level(df):
     # Create dataframe and return
     df_plot = pd.DataFrame(list_dict_plot)
     return df_plot
+
+def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
+    index = np.argmin(np.abs(fpr - selected_fpr))
+    return thresholds[index]
 #%%
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210629"
 
 # Classifier hyperparameters
 # Number of trees in random forest
-n_estimators = [100, 200, 500]
+n_estimators = [100, 150, 300]
 criterion = ["gini", "entropy"]
 max_features = ["sqrt", "log2", 0.2, 0.3, 0.4]
 max_depth = [2, 5, 10]
@@ -241,6 +259,7 @@ print("Assigning sharp drop")
 df = assign_sharp_drop(df)
 
 # Convert pixel-level to plot-level
+print("Converting to plot level")
 df_plot = convert_pixel_level_to_plot_level(df)
 
 # Digitize loss ratio
@@ -250,22 +269,31 @@ df_plot = df_plot.assign(digitized_loss_ratio = np.digitize(df_plot["loss_ratio"
 df_plot.loc[df_plot["loss_ratio"] == 0, "label"] = 0
 df_plot.loc[df_plot["loss_ratio"] != 0, "label"] = 1
 #%%
+# model_parameters = [
+#     "drop_age",
+#     'drop_min', 'drop_max', 'drop_p25', 'drop_p50', 'drop_p75',
+#     'drop*bc_min', 'drop*bc_max', 'drop*bc_p25', 'drop*bc_p50', 'drop*bc_p75',
+#     'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
+#     'bc(t-2)_max', 'bc(t-1)_max', 'bc(t)_max', 'bc(t+1)_max', 'bc(t+2)_max',
+#     'bc(t-2)_p25', 'bc(t-1)_p25', 'bc(t)_p25', 'bc(t+1)_p25', 'bc(t+2)_p25',
+#     'bc(t-2)_p50', 'bc(t-1)_p50', 'bc(t)_p50', 'bc(t+1)_p50', 'bc(t+2)_p50',
+#     'bc(t-2)_p75', 'bc(t-1)_p75', 'bc(t)_p75', 'bc(t+1)_p75', 'bc(t+2)_p75',
+# ]
+
 model_parameters = [
-    'drop_age', 'drop_bc_p25', 'drop_bc_p50', 'drop_bc_p75',
-    'drop_t-2_min', 'drop_t-1_min', 'drop_t0_min', 'drop_t+1_min', 'drop_t+2_min',
-    'drop_t-2_max', 'drop_t-1_max', 'drop_t0_max', 'drop_t+1_max', 'drop_t+2_max',
-    'drop_t-2_p25', 'drop_t-1_p25', 'drop_t0_p25', 'drop_t+1_p25', 'drop_t+2_p25',
-    'drop_t-2_p50', 'drop_t-1_p50', 'drop_t0_p50', 'drop_t+1_p50', 'drop_t+2_p50',
-    'drop_t-2_p75', 'drop_t-1_p75', 'drop_t0_p75', 'drop_t+1_p75', 'drop_t+2_p75',
- ]
+    "drop_age",
+    'drop_min', 'drop_max',
+    'drop*bc_min', 'drop*bc_max',
+    'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
+]
 #%% Step1: Classify for flood or nonflood
-x_train = df_plot.loc[~(df_plot["ext_act_id"]%10).isin([8, 9]), model_parameters].values
-x_test = df_plot.loc[(df_plot["ext_act_id"]%10).isin([8, 9]), model_parameters].values
+df_plot_train = df_plot.loc[~(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
+df_plot_test  = df_plot.loc[(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
 
-y_train = df_plot.loc[~(df_plot["ext_act_id"]%10).isin([8, 9]), "label"].values
-y_test = df_plot.loc[(df_plot["ext_act_id"]%10).isin([8, 9]), "label"].values
-
-# Define model
+plt.close("all")
+# =============================================================================
+# Train model (First time)
+# =============================================================================
 model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                            param_distributions=random_grid,
                            n_iter=20,
@@ -273,22 +301,72 @@ model = RandomizedSearchCV(estimator=RandomForestClassifier(),
                            verbose=2,
                            random_state=42,
                            n_jobs=-1,
-                           scoring='f1'
+                           scoring='roc_auc'
                            )
-# Fit the random search model
-model.fit(x_train, y_train)
+# Fine-tuning model
+model.fit(df_plot_train[model_parameters], df_plot_train["label"])
 model = model.best_estimator_
+
+# Plot results #1
+ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train[model_parameters], df_plot_train["label"], "Train")
+ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
+ax = set_roc_plot_template(ax)
+
+# # Calculate BCE and clean p90
+# df_plot_train = df_plot_train.assign(predict_proba = model.predict_proba(df_plot_train[model_parameters])[:, 1])
+# df_plot_train = df_plot_train.assign(bce = -(df_plot_train["label"]*np.log(df_plot_train["predict_proba"]))-((1-df_plot_train["label"])*np.log(1-df_plot_train["predict_proba"])))
+
+# threshold_bce_0 = df_plot_train.loc[df_plot_train["label"] == 0, "bce"].quantile(0.9)
+# threshold_bce_1 = df_plot_train.loc[df_plot_train["label"] == 1, "bce"].quantile(0.9)
+
+# # Cleaned data
+# df_plot_train_cleaned = pd.concat([
+#     df_plot_train.loc[(df_plot_train["label"] == 0) & (df_plot_train["bce"] <= threshold_bce_0)],
+#     df_plot_train.loc[(df_plot_train["label"] == 1) & (df_plot_train["bce"] <= threshold_bce_1)]
+# ], ignore_index=True)
+
+# # =============================================================================
+# # Train model (Second time w/ cleaner data)
+# # =============================================================================
+# model = RandomizedSearchCV(estimator=RandomForestClassifier(),
+#                            param_distributions=random_grid,
+#                            n_iter=20,
+#                            cv=5,
+#                            verbose=2,
+#                            random_state=42,
+#                            n_jobs=-1,
+#                            scoring='roc_auc'
+#                            )
+# # Fine-tuning model
+# model.fit(df_plot_train_cleaned[model_parameters], df_plot_train_cleaned["label"])
+# model = model.best_estimator_
+
+# # Plot results #2
+# ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train_cleaned[model_parameters], df_plot_train_cleaned["label"], "Train")
+# ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
+# ax = set_roc_plot_template(ax)
+
+plt.figure()
+plt.barh([a[1] for a in sorted(zip(model.feature_importances_, model_parameters))], [100*a[0] for a in sorted(zip(model.feature_importances_, model_parameters))])
+#%% Check result
+threshold = get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr=0.2)
+df_plot_test = df_plot_test.assign(predict_proba = model.predict_proba(df_plot_test[model_parameters])[:, 1])
+df_plot_test = df_plot_test.assign(bce = -(df_plot_test["label"]*np.log(df_plot_test["predict_proba"]))-((1-df_plot_test["label"])*np.log(1-df_plot_test["predict_proba"])))
+df_plot_test = df_plot_test.sort_values(by="bce", ascending=False)
+#%% Check FA
+df_plot_test_fa = df_plot_test[(df_plot_test["label"] == 0) & (df_plot_test["predict_proba"] >= threshold)]
+#%%
+plt.close("all")
+for _, sample in df_plot_test_fa.tail().iterrows():
+    ext_act_id = sample.ext_act_id
+    sample = df[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot()
+    ax.plot(sample[columns_large].T)
+#%%
+sns.histplot(df_plot_test_fa["bce"], stat="probability", cumulative=True, element="step", fill=False)
 #%% Step2: If nonflood -> skip. Otherwise -> Regression model
-
-
-
-
-
-
-
-
-
-
+#%%
+#%%
 
 
 
