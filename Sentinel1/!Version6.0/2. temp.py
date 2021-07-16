@@ -211,7 +211,7 @@ root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210629"
 
 # Classifier hyperparameters
 # Number of trees in random forest
-n_estimators = [100, 150, 300]
+n_estimators = [100, 250, 500]
 criterion = ["gini", "entropy"]
 max_features = ["sqrt", "log2", 0.2, 0.3, 0.4]
 max_depth = [2, 5, 10]
@@ -269,23 +269,23 @@ df_plot = df_plot.assign(digitized_loss_ratio = np.digitize(df_plot["loss_ratio"
 df_plot.loc[df_plot["loss_ratio"] == 0, "label"] = 0
 df_plot.loc[df_plot["loss_ratio"] != 0, "label"] = 1
 #%%
-# model_parameters = [
-#     "drop_age",
-#     'drop_min', 'drop_max', 'drop_p25', 'drop_p50', 'drop_p75',
-#     'drop*bc_min', 'drop*bc_max', 'drop*bc_p25', 'drop*bc_p50', 'drop*bc_p75',
-#     'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
-#     'bc(t-2)_max', 'bc(t-1)_max', 'bc(t)_max', 'bc(t+1)_max', 'bc(t+2)_max',
-#     'bc(t-2)_p25', 'bc(t-1)_p25', 'bc(t)_p25', 'bc(t+1)_p25', 'bc(t+2)_p25',
-#     'bc(t-2)_p50', 'bc(t-1)_p50', 'bc(t)_p50', 'bc(t+1)_p50', 'bc(t+2)_p50',
-#     'bc(t-2)_p75', 'bc(t-1)_p75', 'bc(t)_p75', 'bc(t+1)_p75', 'bc(t+2)_p75',
-# ]
-
 model_parameters = [
     "drop_age",
-    'drop_min', 'drop_max',
-    'drop*bc_min', 'drop*bc_max',
+    'drop_min', 'drop_max', 'drop_p25', 'drop_p50', 'drop_p75',
+    'drop*bc_min', 'drop*bc_max', 'drop*bc_p25', 'drop*bc_p50', 'drop*bc_p75',
     'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
+    'bc(t-2)_max', 'bc(t-1)_max', 'bc(t)_max', 'bc(t+1)_max', 'bc(t+2)_max',
+    'bc(t-2)_p25', 'bc(t-1)_p25', 'bc(t)_p25', 'bc(t+1)_p25', 'bc(t+2)_p25',
+    'bc(t-2)_p50', 'bc(t-1)_p50', 'bc(t)_p50', 'bc(t+1)_p50', 'bc(t+2)_p50',
+    'bc(t-2)_p75', 'bc(t-1)_p75', 'bc(t)_p75', 'bc(t+1)_p75', 'bc(t+2)_p75',
 ]
+
+# model_parameters = [
+#     "drop_age",
+#     'drop_min', 'drop_max',
+#     'drop*bc_min', 'drop*bc_max',
+#     'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
+# ]
 #%% Step1: Classify for flood or nonflood
 df_plot_train = df_plot.loc[~(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
 df_plot_test  = df_plot.loc[(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
@@ -308,9 +308,15 @@ model.fit(df_plot_train[model_parameters], df_plot_train["label"])
 model = model.best_estimator_
 
 # Plot results #1
-ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train[model_parameters], df_plot_train["label"], "Train")
+fig, ax = plt.subplots()
+ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train[model_parameters], df_plot_train["label"], "Train", ax=ax)
 ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
-ax = set_roc_plot_template(ax)
+ax.grid()
+ax.legend(loc=4)
+fig.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\ROC(all).png", bbox_inches="tight")
+plt.figure(figsize=(16, 9))
+plt.barh([a[1] for a in sorted(zip(model.feature_importances_, model_parameters))], [100*a[0] for a in sorted(zip(model.feature_importances_, model_parameters))])
+plt.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\Feature_importance(all).png", bbox_inches="tight")
 
 # # Calculate BCE and clean p90
 # df_plot_train = df_plot_train.assign(predict_proba = model.predict_proba(df_plot_train[model_parameters])[:, 1])
@@ -345,33 +351,89 @@ ax = set_roc_plot_template(ax)
 # ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train_cleaned[model_parameters], df_plot_train_cleaned["label"], "Train")
 # ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
 # ax = set_roc_plot_template(ax)
-
-plt.figure()
-plt.barh([a[1] for a in sorted(zip(model.feature_importances_, model_parameters))], [100*a[0] for a in sorted(zip(model.feature_importances_, model_parameters))])
 #%% Check result
 threshold = get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr=0.2)
 df_plot_test = df_plot_test.assign(predict_proba = model.predict_proba(df_plot_test[model_parameters])[:, 1])
+df_plot_test.loc[df_plot_test["predict_proba"] == 0, "predict_proba"] = 0.01
+df_plot_test.loc[df_plot_test["predict_proba"] == 0, "predict_proba"] = 0.99
 df_plot_test = df_plot_test.assign(bce = -(df_plot_test["label"]*np.log(df_plot_test["predict_proba"]))-((1-df_plot_test["label"])*np.log(1-df_plot_test["predict_proba"])))
 df_plot_test = df_plot_test.sort_values(by="bce", ascending=False)
 #%% Check FA
 df_plot_test_fa = df_plot_test[(df_plot_test["label"] == 0) & (df_plot_test["predict_proba"] >= threshold)]
+df_plot_test_ms = df_plot_test[(df_plot_test["label"] == 1) & (df_plot_test["predict_proba"] <= threshold)]
 #%%
-plt.close("all")
-for _, sample in df_plot_test_fa.tail().iterrows():
+for _, sample in tqdm(df_plot_test_fa.iterrows(), total=len(df_plot_test_fa)):
+    plt.close("all")
     ext_act_id = sample.ext_act_id
+    predict_proba = sample.predict_proba
+    bce = sample.bce
     sample = df[df["ext_act_id"] == ext_act_id]
     fig, ax = initialize_plot()
     ax.plot(sample[columns_large].T)
-#%%
+    ax.axvline(sample.drop_column.iloc[0], linestyle="--")
+    ax.grid()
+    fig.suptitle(f"ext_act_id: {int(ext_act_id)}\nProb: {predict_proba:.2f}, BCE: {bce:.2f}")
+    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\FA", f"{bce:.2f}_{int(ext_act_id)}.png"), bbox_inches="tight")
+
+for _, sample in tqdm(df_plot_test_ms.iterrows(), total=len(df_plot_test_ms)):
+    plt.close("all")
+    ext_act_id = sample.ext_act_id
+    predict_proba = sample.predict_proba
+    bce = sample.bce
+    loss_ratio = sample.loss_ratio
+    
+    sample = df[df["ext_act_id"] == ext_act_id]
+    fig, ax = initialize_plot()
+    ax.plot(sample[columns_large].T)
+    ax.axvline(sample.drop_column.iloc[0], linestyle="--")
+    ax.grid()
+    fig.suptitle(f"ext_act_id: {int(ext_act_id)}, loss_ratio: {loss_ratio:.2f}\nProb: {predict_proba:.2f}, BCE: {bce:.2f}")
+    fig.savefig(os.path.join(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\MS", f"{bce:.2f}_{int(ext_act_id)}.png"), bbox_inches="tight")
+plt.figure()
 sns.histplot(df_plot_test_fa["bce"], stat="probability", cumulative=True, element="step", fill=False)
 #%% Step2: If nonflood -> skip. Otherwise -> Regression model
 #%%
+df_plot_train_loss = df_plot_train[df_plot_train["label"] == 1]
+df_plot_test_loss = df_plot_test[df_plot_test["label"] == 1]
 #%%
+from sklearn.ensemble import RandomForestRegressor
+reg = RandomForestRegressor(n_jobs=-1)
+reg.fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
+predict_loss_ratio = reg.predict(df_plot_test_loss[model_parameters])
+predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
 
+df_reg = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
+df_reg.columns = ["predict", "actual"]
+sns.histplot(df_reg["actual"]-df_reg["predict"], kde=True, binrange=(-1, 1))
+plt.xlabel("Actual-Predict")
+# sns.histplot(df_reg["actual"], binrange=(0, 1))
+# sns.histplot(df_reg["predict"], binrange=(0, 1))
+#%%
+# #%%
+# from sklearn.svm import SVR
+# svr = LinearRegression().fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
+# predict_loss_ratio = svr.predict(df_plot_test_loss[model_parameters])
+# predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
 
+# df_reg = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
+# df_reg.columns = ["predict", "actual"]
+# #%%
+# sns.histplot(df_reg["actual"]-df_reg["predict"], kde=True, binrange=(-1, 1))
+# sns.histplot(df_reg["actual"], binrange=(0, 1))
+# sns.histplot(df_reg["predict"], binrange=(0, 1))
 
-
-
+# #%%
+# reg = LinearRegression(n_jobs=-1)
+# reg.fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
+# #%%
+# predict_loss_ratio = reg.predict(df_plot_test_loss[model_parameters])
+# predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
+# df_ref = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
+# df_ref.columns = ["predict", "actual"]
+# #%%
+# from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+# print(f'{mean_squared_error(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f} {mean_absolute_error(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f} {r2_score(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f}')
+  
 
 
 
