@@ -261,9 +261,9 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
 for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     # strip_id = "304"
     print(strip_id)
-    model = load_model(os.path.join(root_model, f"{strip_id}_new.joblib"))
+    model = load_model(os.path.join(root_model, f"{strip_id}_old.joblib"))
     model.n_jobs = -1
-    dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params_new.h5"))
+    dict_roc_params = load_h5(os.path.join(root_model, f"{strip_id}_metrics_params_old.h5"))
     threshold = get_threshold_of_selected_fpr(dict_roc_params["fpr"], dict_roc_params["threshold_roc"], selected_fpr=0.2)
     
     # Load df rice code

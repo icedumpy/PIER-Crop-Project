@@ -397,7 +397,7 @@ df_plot_train_loss = df_plot_train[df_plot_train["label"] == 1]
 df_plot_test_loss = df_plot_test[df_plot_test["label"] == 1]
 #%%
 from sklearn.ensemble import RandomForestRegressor
-reg = RandomForestRegressor(n_jobs=-1)
+reg = LinearRegression(n_jobs=-1)
 reg.fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
 predict_loss_ratio = reg.predict(df_plot_test_loss[model_parameters])
 predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
