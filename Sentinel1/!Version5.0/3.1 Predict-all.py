@@ -265,7 +265,7 @@ for strip_id in ["302", "303", "304", "305", "401", "402", "403"]:
     df = pd.concat([pd.read_parquet(os.path.join(root_df_s1_temporal, file)) for file in os.listdir(root_df_s1_temporal) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
     df = df[df["in_season_rice_f"] == 1]
     df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
-    df = df[df["final_crop_year"] == 2020]
+    df = df[df["final_crop_year"].isin([2018, 2019, 2020])]
     df["PAT"] = df['PLANT_PROVINCE_CODE'].astype(str).str.zfill(2) + df['PLANT_AMPHUR_CODE'].astype(str).str.zfill(2) + df['PLANT_TAMBON_CODE'].astype(str).str.zfill(2)
     df = df[df["PAT"].isin(df_province_code["PAT"])]
     

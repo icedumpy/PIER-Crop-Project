@@ -3,20 +3,13 @@ import numpy as np
 import pandas as pd
 from numba import jit
 from tqdm import tqdm
-import seaborn as sns
-from pprint import pprint
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import RandomizedSearchCV
-from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 #%%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
     '''
     Interpolate an array in both directions using numba.
-    (From P'Tee+)
+    (From     'Tee+)
 
     Parameters
     ---------
@@ -24,6 +17,7 @@ def interp_numba(arr_ndvi):
         An array of NDVI values to be interpolated.
 
     Returns
+     
     ---------
     arr_ndvi : numpy.array(np.float32)
         An array of interpolated NDVI values
@@ -128,8 +122,12 @@ def convert_pixel_level_to_plot_level(df):
     list_dict_plot = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
         loss_ratio = df_grp.iloc[0]["loss_ratio"]
+        PLANT_PROVINCE_CODE = df_grp.iloc[0]["PLANT_PROVINCE_CODE"]
+        PLANT_AMPHUR_CODE = df_grp.iloc[0]["PLANT_AMPHUR_CODE"]
+        PLANT_TAMBON_CODE = df_grp.iloc[0]["PLANT_TAMBON_CODE"]
 
         # Agg parameters
+        n_pixel = len(df_grp)
         drop_min = df_grp["drop"].min()
         drop_max = df_grp["drop"].max()
         drop_p25 = df_grp["drop"].quantile(0.25)
@@ -156,6 +154,10 @@ def convert_pixel_level_to_plot_level(df):
         # Create dict of parameters
         dict_plot = {
             "ext_act_id":ext_act_id,
+            'PLANT_PROVINCE_CODE':PLANT_PROVINCE_CODE,
+            'PLANT_AMPHUR_CODE':PLANT_AMPHUR_CODE,
+            'PLANT_TAMBON_CODE':PLANT_TAMBON_CODE,
+            "n_pixel":n_pixel,
             "drop_age":drop_age,
             "drop_min":drop_min,
             "drop_max":drop_max,
@@ -188,7 +190,7 @@ def convert_pixel_level_to_plot_level(df):
             "bc(t+1)_p50":bc_p50[3],
             "bc(t+2)_p50":bc_p50[4],
             "bc(t-2)_p75":bc_p75[0],
-            "bc(t-1)_p75":bc_p75[1],
+            "bc(t-1)_p75":bc_p75[1],        
             "bc(t)_p75"  :bc_p75[2],
             "bc(t+1)_p75":bc_p75[3],
             "bc(t+2)_p75":bc_p75[4],
@@ -207,8 +209,8 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     return thresholds[index]
 #%%
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
-root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210629"
-path_sandbox = r"F:\CROP-PIER\CROP-WORK\Sandbox_ext_act_id.csv"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_version4(at-False)"
+path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 
 # Define columns' group name
 columns = [f"t{i}" for i in range(0, 30)]
@@ -219,44 +221,20 @@ columns_age3 = [f"t{i}" for i in range(15, 20)] # 90-119
 columns_age4 = [f"t{i}" for i in range(20, 30)] # 120-179
 
 columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
-
-df_sandbox = pd.read_csv(path_sandbox)
 #%%
-strip_id = "304"
-
-df = pd.concat([pd.read_parquet(os.path.join(root_vew, file)) for file in os.listdir(root_vew) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
-df = df[df["in_season_rice_f"] == 1]
-df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
-df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-df = df[df["ext_act_id"].isin(df_sandbox["ext_act_id"])]
-
-# Convert power to dB
-print("Converting to dB")
-df = convert_power_to_db(df, columns_large)
-
-# Assign sharp drop
-print("Assigning sharp drop")
-df = assign_sharp_drop(df)
-
-# Convert pixel-level to plot-level
-print("Converting to plot level")
-df_plot = convert_pixel_level_to_plot_level(df)
+# Load df rice code
+df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
+df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
-df_plot.loc[df_plot["loss_ratio"] == 0]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+for strip_id in ["302", "303", "304", "305", "306", "401", "402", "403"]:
+    print(strip_id)
+    df = pd.concat([pd.read_parquet(os.path.join(root_vew, file)) for file in os.listdir(root_vew) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+    df = df[df["in_season_rice_f"] == 1]
+    df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
+    df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
+    for PLANT_PROVINCE_CODE, df_grp in df.groupby("PLANT_PROVINCE_CODE"):
+        df_grp = convert_power_to_db(df_grp, columns_large)
+        df_grp = assign_sharp_drop(df_grp)
+        df_grp = pd.merge(df_grp, df_rice_code, on="BREED_CODE", how="inner") 
+        df_plot = convert_pixel_level_to_plot_level(df_grp)
+        df_plot.to_parquet(os.path.join(root_save, f"df_s1ab_version4_p{PLANT_PROVINCE_CODE}_s{strip_id}.parquet"))

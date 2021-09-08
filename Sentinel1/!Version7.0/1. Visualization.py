@@ -1,22 +1,23 @@
 import os
+import datetime
 import numpy as np
 import pandas as pd
 from numba import jit
 from tqdm import tqdm
 import seaborn as sns
 from pprint import pprint
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
 from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 #%%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
     '''
     Interpolate an array in both directions using numba.
-    (From P'Tee+)
+    (From     'Tee+)
 
     Parameters
     ---------
@@ -24,6 +25,7 @@ def interp_numba(arr_ndvi):
         An array of NDVI values to be interpolated.
 
     Returns
+     
     ---------
     arr_ndvi : numpy.array(np.float32)
         An array of interpolated NDVI values
@@ -205,10 +207,64 @@ def convert_pixel_level_to_plot_level(df):
 def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
+
+def get_linear_score(df_plot_train_reg, df_plot_test_reg, reg):
+    pred_train = np.clip(reg.predict(df_plot_train_reg[model_parameters]), 0, 1)
+    pred_test  = np.clip(reg.predict(df_plot_test_reg[model_parameters]), 0, 1)
+    
+    mae_train = mean_absolute_error(df_plot_train_reg["loss_ratio"], pred_train)
+    mae_test  = mean_absolute_error(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    mse_train = mean_squared_error(df_plot_train_reg["loss_ratio"], pred_train)
+    mse_test  = mean_squared_error(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    r2_train = r2_score(df_plot_train_reg["loss_ratio"], pred_train)
+    r2_test  = r2_score(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    return pred_train, pred_test, mae_train, mae_test, mse_train, mse_test, r2_train, r2_test
+
+# Not work (distribution of output is completely changed)
+def sigmoid(x):
+    return 1/(1+np.power(np.e, -x))
+
+def plot_hist_actual_predicted(df_plot_train_reg, df_plot_test_reg, reg):
+    fig, ax = plt.subplots(ncols=2, sharey=True)
+    df_result = pd.DataFrame([df_plot_train_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_train_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    ax[0] = sns.histplot(
+        data=df_result.melt(var_name='Type', value_name='Loss ratio'), x="Loss ratio", hue="Type",
+        stat="probability", element="step", ax=ax[0]
+    )
+    ax[0].set_title("Train")
+    
+    df_result = pd.DataFrame([df_plot_test_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_test_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    ax[1] = sns.histplot(
+        data=df_result.melt(var_name='Type', value_name='Loss ratio'), x="Loss ratio", hue="Type",
+        stat="probability", element="step", ax=ax[1]
+    )
+    ax[1].set_title("Test")
+    return fig, ax
 #%%
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
-root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210629"
-path_sandbox = r"F:\CROP-PIER\CROP-WORK\Sandbox_ext_act_id.csv"
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210903"
+path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
+
+# Classifier hyperparameters
+# Number of trees in random forest
+n_estimators = [100, 250, 500]
+criterion = ["gini", "entropy"]
+max_features = ["sqrt", "log2", 0.2, 0.3, 0.4]
+max_depth = [2, 5, 10]
+min_samples_split = [2, 5, 10]
+min_samples_leaf = [2, 5, 10]
+
+# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'criterion' : criterion,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf}
+pprint(random_grid)
 
 # Define columns' group name
 columns = [f"t{i}" for i in range(0, 30)]
@@ -219,16 +275,22 @@ columns_age3 = [f"t{i}" for i in range(15, 20)] # 90-119
 columns_age4 = [f"t{i}" for i in range(20, 30)] # 120-179
 
 columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
-
-df_sandbox = pd.read_csv(path_sandbox)
+#%%
+# Load df rice code
+df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
+df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
 strip_id = "304"
+os.makedirs(os.path.join(root_save, strip_id), exist_ok=True)
 
 df = pd.concat([pd.read_parquet(os.path.join(root_vew, file)) for file in os.listdir(root_vew) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
 df = df[df["in_season_rice_f"] == 1]
 df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
 df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-df = df[df["ext_act_id"].isin(df_sandbox["ext_act_id"])]
+
+# Samping 
+df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 
+                                                len(df.loc[df["loss_ratio"] > 0, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] > 0)]
 
 # Convert power to dB
 print("Converting to dB")
@@ -238,25 +300,111 @@ df = convert_power_to_db(df, columns_large)
 print("Assigning sharp drop")
 df = assign_sharp_drop(df)
 
+# Merge photo sensitivity
+print("Merging photo sensitivity")
+df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
+
 # Convert pixel-level to plot-level
 print("Converting to plot level")
 df_plot = convert_pixel_level_to_plot_level(df)
+
+# Digitize loss ratio
+df_plot = df_plot.assign(digitized_loss_ratio = np.digitize(df_plot["loss_ratio"], [0, 0.25, 0.5, 0.75], right=True))
+
+# Label for flood or nonflood
+df_plot.loc[df_plot["loss_ratio"] == 0, "label"] = 0
+df_plot.loc[df_plot["loss_ratio"] != 0, "label"] = 1
 #%%
-df_plot.loc[df_plot["loss_ratio"] == 0]
+model_parameters = [
+    "drop_age",
+    'drop_min', 'drop_max', 'drop_p25', 'drop_p50', 'drop_p75',
+    'drop*bc_min', 'drop*bc_max', 'drop*bc_p25', 'drop*bc_p50', 'drop*bc_p75',
+    'bc(t-2)_min', 'bc(t-1)_min', 'bc(t)_min', 'bc(t+1)_min', 'bc(t+2)_min',
+    'bc(t-2)_max', 'bc(t-1)_max', 'bc(t)_max', 'bc(t+1)_max', 'bc(t+2)_max',
+    'bc(t-2)_p25', 'bc(t-1)_p25', 'bc(t)_p25', 'bc(t+1)_p25', 'bc(t+2)_p25',
+    'bc(t-2)_p50', 'bc(t-1)_p50', 'bc(t)_p50', 'bc(t+1)_p50', 'bc(t+2)_p50',
+    'bc(t-2)_p75', 'bc(t-1)_p75', 'bc(t)_p75', 'bc(t+1)_p75', 'bc(t+2)_p75',
+]
+df_plot_train = df_plot.loc[~(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
+df_plot_test  = df_plot.loc[(df_plot["ext_act_id"]%10).isin([8, 9])].copy()
+#%%
+# Label for flood or nonflood
+df.loc[df["loss_ratio"] == 0, "label"] = "normal"
+df.loc[df["loss_ratio"] != 0, "label"] = "flood"
+#%%
+# Fetures hist 
+plt.close("all")
+for feature in ['drop', 'drop*bc', 'bc(t-2)', 'bc(t-1)', 'bc(t)', 'bc(t+1)', 'bc(t+2)']:
+    fig, ax = plt.subplots()
+    sns.histplot(data=df, x=feature, hue="label", ax=ax)
+    try:
+        fig.savefig(os.path.join(root_save, f"{strip_id}_{feature}.png"), bbox_inches="tight")
+    except:
+        fig.savefig(os.path.join(root_save, f"{strip_id}_{feature.replace('*', 'x')}.png"), bbox_inches="tight")
+#%%
+# Loss ratio hist
+plt.close("all")
+fig, ax = plt.subplots()
+sns.histplot(df.loc[(df["loss_ratio"] > 0) & (df["loss_ratio"] <= 1), "loss_ratio"], stat="probability", ax=ax)
+ax.set_title("0 < Loss ratio <= 1")
+fig.savefig(os.path.join(root_save, f"{strip_id}_loss_ratio(0,1].png"), bbox_inches="tight")
 
+fig, ax= plt.subplots()
+sns.histplot(df.loc[(df["loss_ratio"] > 0) & (df["loss_ratio"] <= 1), "loss_ratio"], stat="probability",
+             cumulative=True, ax=ax)
+ax.set_title("0 < Loss ratio <= 1")
+fig.savefig(os.path.join(root_save, f"{strip_id}_loss_ratio(0,1]_cumulative.png"), bbox_inches="tight")
 
+fig, ax = plt.subplots()
+sns.histplot(df.loc[(df["loss_ratio"] > 0) & (df["loss_ratio"] <  1), "loss_ratio"], stat="probability", ax=ax)
+ax.set_title("0 < Loss ratio <  1")
+fig.savefig(os.path.join(root_save, f"{strip_id}_loss_ratio(0,1).png"), bbox_inches="tight")
 
+#%%
+# Rice age hist
+plt.close("all")
+fig, ax = plt.subplots()
+sns.histplot(data=df_plot[df_plot["loss_ratio"] != 0], x="drop_min", hue="drop_age", kde=True,
+             palette="tab10", ax=ax)
+fig.savefig(os.path.join(root_save, f"{strip_id}_drop_min_age.png"), bbox_inches="tight")
 
+fig, ax = plt.subplots()
+sns.histplot(data=df_plot[df_plot["loss_ratio"] != 0], x="bc(t)_min", hue="drop_age", kde=True,
+             palette="tab10", ax=ax)
+fig.savefig(os.path.join(root_save, f"{strip_id}_bc(t)_min_age.png"), bbox_inches="tight")
 
-
-
-
-
-
-
-
-
-
+fig, ax = plt.subplots()
+sns.histplot(data=df_plot[df_plot["loss_ratio"] != 0], x="drop*bc_max", hue="drop_age", kde=True,
+             palette="tab10", ax=ax)
+fig.savefig(os.path.join(root_save, f"{strip_id}_dropxbc_max_age.png"), bbox_inches="tight")
+#%% Show time-series
+for ext_act_id, df_grp in df[df["label"] == "normal"].groupby("ext_act_id"):
+    plt.close("all")
+    
+    fig, ax = initialize_plot()
+    ax.plot(df_grp[columns_large].values.T)
+    ax.axvline(int(df_grp.iloc[0]["drop_column"][1:]), linestyle="--", color="red")
+    ax.grid()
+    plt.pause(1)
+#%%
+# Photosentivity
+plt.close("all")
+plt.bar(['Non-photosensitive', 'Photosensitive'], df.groupby("ext_act_id").agg({"photo_sensitive_f":"mean"}).value_counts(normalize=True).sort_index())
+for i, value in enumerate(df.groupby("ext_act_id").agg({"photo_sensitive_f":"mean"}).value_counts(normalize=True).sort_index()):
+    plt.text(i, value+0.01, f"{100*value:.2f}%", horizontalalignment="center")
+plt.savefig(os.path.join(root_save, f"{strip_id}_photosensitivity_ratio.png"), bbox_inches="tight")
+#%%
+# min Hist
+df = df.assign(**{"min":df[columns_model].min(axis=1)})
+sns.histplot(data=df, x="min", hue="label")
+#%%
+# flood month hist
+df_temp = pd.DataFrame(df[df["label"] == "flood"].groupby("danger_year")["danger_month"].value_counts())
+df_temp.columns = ["count"]
+df_temp = df_temp.reset_index()
+df_temp = df_temp.astype("uint32")
+sns.barplot(data=df_temp, x="danger_month", y="count", hue="danger_year")
+plt.savefig(os.path.join(root_save, f"{strip_id}_danger_freq.png"), bbox_inches="tight")
 
 
 

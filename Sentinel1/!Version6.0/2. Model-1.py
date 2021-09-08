@@ -1,29 +1,31 @@
 import os
+import datetime
 import numpy as np
 import pandas as pd
 from numba import jit
 from tqdm import tqdm
 import seaborn as sns
 from pprint import pprint
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
 from icedumpy.plot_tools import plot_roc_curve, set_roc_plot_template
 #%%
 @jit(nopython=True)
 def interp_numba(arr_ndvi):
     '''
     Interpolate an array in both directions using numba.
-    (From P'Tee+)
+    (From     'Tee+)
 
     Parameters
     ---------
     arr_ndvi : numpy.array(np.float32)
         An array of NDVI values to be interpolated.
 
-    Returns
+    Returns14
+     
     ---------
     arr_ndvi : numpy.array(np.float32)
         An array of interpolated NDVI values
@@ -205,6 +207,42 @@ def convert_pixel_level_to_plot_level(df):
 def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
+
+def get_linear_score(df_plot_train_reg, df_plot_test_reg, reg):
+    pred_train = np.clip(reg.predict(df_plot_train_reg[model_parameters]), 0, 1)
+    pred_test  = np.clip(reg.predict(df_plot_test_reg[model_parameters]), 0, 1)
+    
+    mae_train = mean_absolute_error(df_plot_train_reg["loss_ratio"], pred_train)
+    mae_test  = mean_absolute_error(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    mse_train = mean_squared_error(df_plot_train_reg["loss_ratio"], pred_train)
+    mse_test  = mean_squared_error(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    r2_train = r2_score(df_plot_train_reg["loss_ratio"], pred_train)
+    r2_test  = r2_score(df_plot_test_reg["loss_ratio"], pred_test)
+    
+    return pred_train, pred_test, mae_train, mae_test, mse_train, mse_test, r2_train, r2_test
+
+# Not work (distribution of output is completely changed)
+def sigmoid(x):
+    return 1/(1+np.power(np.e, -x))
+
+def plot_hist_actual_predicted(df_plot_train_reg, df_plot_test_reg, reg):
+    fig, ax = plt.subplots(ncols=2, sharey=True)
+    df_result = pd.DataFrame([df_plot_train_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_train_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    ax[0] = sns.histplot(
+        data=df_result.melt(var_name='Type', value_name='Loss ratio'), x="Loss ratio", hue="Type",
+        stat="probability", element="step", ax=ax[0]
+    )
+    ax[0].set_title("Train")
+    
+    df_result = pd.DataFrame([df_plot_test_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_test_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    ax[1] = sns.histplot(
+        data=df_result.melt(var_name='Type', value_name='Loss ratio'), x="Loss ratio", hue="Type",
+        stat="probability", element="step", ax=ax[1]
+    )
+    ax[1].set_title("Test")
+    return fig, ax
 #%%
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210629"
@@ -248,7 +286,6 @@ df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
 # Samping 
 df = df[(df["ext_act_id"].isin(np.random.choice(df.loc[df["loss_ratio"] == 0, "ext_act_id"].unique(), 
                                                 len(df.loc[df["loss_ratio"] > 0, "ext_act_id"].unique()), replace=False))) | (df["loss_ratio"] > 0)]
-
 
 # Convert power to dB
 print("Converting to dB")
@@ -311,13 +348,255 @@ model = model.best_estimator_
 fig, ax = plt.subplots()
 ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train[model_parameters], df_plot_train["label"], "Train", ax=ax)
 ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
+ax = set_roc_plot_template(ax)
+#%%
+# Time for model#2 - Predict bin
+#%%
+df_plot_train_reg = df_plot.loc[(~(df_plot["ext_act_id"]%10).isin([8, 9])) & (df_plot["loss_ratio"] > 0)].copy()
+df_plot_test_reg  = df_plot.loc[((df_plot["ext_act_id"]%10).isin([8, 9])) & (df_plot["loss_ratio"] > 0)].copy()
+#%%
+# Time for model#2 - Predict loss ratio
+#%%
+from sklearn import linear_model
+reg = linear_model.LinearRegression()
+reg.fit(df_plot_train_reg[model_parameters], df_plot_train_reg["loss_ratio"])
+fig, ax = plot_hist_actual_predicted(df_plot_train_reg, df_plot_test_reg, reg)
+fig.suptitle("Linear Regression")
+#%%
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression, Ridge, RidgeCV, Lasso, LassoCV, LassoLarsCV, LassoLarsIC
+from sklearn.linear_model import ElasticNet, Lars, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression
+from sklearn.linear_model import PassiveAggressiveRegressor, TheilSenRegressor
+
+list_names = [
+    "Linear Regression", "Ridge", "RidgeCV", "Lasso", 
+    "LassoCV", "LassoLarsCV", "LassoLarsIC", "ElasticNet",
+    "Lars", "LassoLars", "OrthogonalMatchingPursuit", "BayesianRidge",
+    "ARDRegression", "PassiveAggressiveRegressor", "TheilSenRegressor",
+    "PolynomialFeatures(Degree=2)", "PolynomialFeatures(Degree=3)"
+]
+
+list_regressors  = [
+    LinearRegression(), Ridge(), RidgeCV(), Lasso(),
+    LassoCV(), LassoLarsCV(), LassoLarsIC(), ElasticNet(),
+    Lars(), LassoLars(), OrthogonalMatchingPursuit(), BayesianRidge(),
+    ARDRegression(), PassiveAggressiveRegressor(), TheilSenRegressor(),
+    Pipeline([('poly', PolynomialFeatures(degree=2)), ('linear', LinearRegression(fit_intercept=False))]),
+    Pipeline([('poly', PolynomialFeatures(degree=3)), ('linear', LinearRegression(fit_intercept=False, n_jobs=7))]),
+]
+
+root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20210824"
+os.makedirs(os.path.join(root_save, strip_id), exist_ok=True)
+
+dict_score = dict()
+for name, reg in zip(list_names, list_regressors):
+    plt.close("all")
+    reg.fit(df_plot_train_reg[model_parameters], df_plot_train_reg["loss_ratio"])
+    # Calculate r score, mae
+    pred_train, pred_test, mae_train, mae_test, mse_train, mse_test, r2_train, r2_test = get_linear_score(df_plot_train_reg, df_plot_test_reg, reg)
+    
+    dict_score[name] = {
+        'mae_train':mae_train, 'mae_test':mae_test, 'mse_train':mse_train, 'mse_test':mse_test,
+        'r2_train':r2_train, 'r2_test':r2_test
+    }
+    # Plot hist (actual loss ratio, predicted loss ratio)
+    fig, ax = plot_hist_actual_predicted(df_plot_train_reg, df_plot_test_reg, reg)    
+    fig.suptitle(f"S{strip_id}, {name}")
+    fig.savefig(os.path.join(root_save, strip_id, f"{name}-{strip_id}.png"), bbox_inches="tight")
+
+    # Plot hist (actual loss ratio - predicted loss ratio)
+    fig, ax = plt.subplots(nrows=4, ncols=2, figsize=(12, 9), sharex=False, sharey='row')
+    # Train
+    df_result = pd.DataFrame([df_plot_train_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_train_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    df_result = df_result.assign(**{"Actual-Predicted":df_result["Actual"]-df_result["Predicted"]})
+    df_result = df_result.assign(digitized_loss_ratio = np.digitize(df_result["Actual"], [0, 0.25, 0.5, 0.75], right=True))
+    for digitized_loss_ratio, df_results_grp, in df_result.groupby("digitized_loss_ratio"):
+        ax[digitized_loss_ratio-1][0] = sns.histplot(
+            df_results_grp["Actual-Predicted"], bins="auto", label=f"Bin:{digitized_loss_ratio}",
+            stat="probability", kde=True, ax=ax[digitized_loss_ratio-1][0]
+        )
+        ax[digitized_loss_ratio-1][0].set_xlabel("")
+        ax[digitized_loss_ratio-1][0].set_xlim(-1, 1)
+    # Test
+    df_result = pd.DataFrame([df_plot_test_reg["loss_ratio"].to_numpy().T, np.clip(reg.predict(df_plot_test_reg[model_parameters]), 0, 1)], index=["Actual", "Predicted"]).T
+    df_result = df_result.assign(**{"Actual-Predicted":df_result["Actual"]-df_result["Predicted"]})
+    df_result = df_result.assign(digitized_loss_ratio = np.digitize(df_result["Actual"], [0, 0.25, 0.5, 0.75], right=True))
+    for digitized_loss_ratio, df_results_grp, in df_result.groupby("digitized_loss_ratio"):
+        ax[digitized_loss_ratio-1][1] = sns.histplot(
+            df_results_grp["Actual-Predicted"], bins="auto", label=f"Bin:{digitized_loss_ratio}",
+            stat="probability", kde=True, ax=ax[digitized_loss_ratio-1][1]
+        )
+        ax[digitized_loss_ratio-1][1].set_xlabel("")
+        ax[digitized_loss_ratio-1][1].set_xlim(-1, 1)
+    ax[0][0].set_title("Train")
+    ax[0][1].set_title("Test")
+    [item.legend(loc=1) for item in ax.reshape(-1)]
+    fig.supxlabel("Actual loss ratio - Predicted loss ratio")
+    # fig.suptitle(f"{name}\nMAE(Train):{mae_train:.4f}, MAE(Test):{mae_test:.4f}\nR2(Train):{r2_train:.4f}, R2(Test):{r2_test:.4f}")
+    fig.suptitle(f"S{strip_id}, {name}\nMAE(Train, Test):{mae_train:.4f}, {mae_test:.4f}\n$R^2$(Train, Test):{r2_train:.4f}, {r2_test:.4f}")
+    fig.savefig(os.path.join(root_save, strip_id, f"{name}-diff-{strip_id}.png"), bbox_inches="tight")
+df_score = pd.DataFrame(dict_score).T
+df_score.to_csv(os.path.join(root_save, strip_id, f"results-{strip_id}.csv"))
+    
+    
+    
+    
+    
+#%%
+pred_train, pred_test, mae_train, mae_test, mse_train, mse_test, r2_train, r2_test = get_linear_score(df_plot_train_reg, df_plot_test_reg, reg)
+print(f"MAE(Train):{mae_train:.4f}, MAE(Test):{mae_test:.4f}")
+print(f"MSE(Train):{mse_train:.4f}, MSE(Test):{mse_test:.4f}")
+print(f"R2 (Train):{r2_train:.4f}, R2 (Test):{r2_test:.4f}")
+#%%
+fig, ax = plt.subplots()
+sns.histplot(df_plot_train_reg["loss_ratio"]-pred_train, bins="auto", kde=True, stat="probability", ax=ax)
+ax.set_xlabel("Actual loss ratio - Predicted loss ratio")
+ax.set_xlim(-1, 1)
+#%%
+fig, ax = plt.subplots(nrows=4, ncols=2, figsize=(16, 9), sharex=True)
+ax[0][0].set_xlim(-1, 1)
+sns.histplot(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.00) & (df_plot_train_reg["loss_ratio"] <= 0.25), "loss_ratio"]-reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.00) & (df_plot_train_reg["loss_ratio"] <= 0.25), model_parameters]), 
+             bins="auto", kde=True, stat="probability", label="0.00 < loss_ratio <= 0.25", ax=ax[0][0])
+sns.histplot(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.25) & (df_plot_train_reg["loss_ratio"] <= 0.50), "loss_ratio"]-reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.25) & (df_plot_train_reg["loss_ratio"] <= 0.50), model_parameters]), 
+             bins="auto", kde=True, stat="probability", label="0.25 < loss_ratio <= 0.50", ax=ax[1][0])
+sns.histplot(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.50) & (df_plot_train_reg["loss_ratio"] <= 0.75), "loss_ratio"]-reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.50) & (df_plot_train_reg["loss_ratio"] <= 0.75), model_parameters]), 
+             bins="auto", kde=True, stat="probability", label="0.50 < loss_ratio <= 0.75", ax=ax[2][0])
+sns.histplot(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.75) & (df_plot_train_reg["loss_ratio"] <= 1.00), "loss_ratio"]-reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.75) & (df_plot_train_reg["loss_ratio"] <= 1.00), model_parameters]), 
+             bins="auto", kde=True, stat="probability", label="0.75 < loss_ratio <= 1.00", ax=ax[3][0])
+ax[3][0].set_xlabel("Actual loss ratio - Predicted loss ratio")
+[item.legend(loc=1) for item in ax[:, 0]]
+#%%
+
+for area in np.arange(0, 20000, 1000):
+    df[df["TOTAL_ACTUAL_PLANT_AREA_IN_WA"].between(area, area+1000, inclusive="right")]
+    break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#%%
+path_sandbox = r"F:\CROP-PIER\CROP-WORK\Sandbox_ext_act_id.csv"
+df_sandbox = pd.read_csv(path_sandbox)
+df_selected = pd.concat([pd.read_parquet(os.path.join(root_vew, file)) for file in os.listdir(root_vew) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+df_selected = df_selected[df_selected["in_season_rice_f"] == 1]
+df_selected = df_selected[(df_selected["DANGER_TYPE"] == "อุทกภัย") | (df_selected["DANGER_TYPE"]).isna()]
+df_selected = df_selected[(df_selected["loss_ratio"] >= 0) & (df_selected["loss_ratio"] <= 1)]
+df_selected = df_selected[df_selected["ext_act_id"].isin(df_sandbox["ext_act_id"])]
+df_selected = pd.merge(df_selected, df_sandbox, how="inner", on="ext_act_id")
+df_selected = convert_power_to_db(df_selected, columns_large)
+df_selected = assign_sharp_drop(df_selected)
+df_selected_plot = convert_pixel_level_to_plot_level(df_selected)
+df_selected_plot = pd.merge(df_selected_plot, df_selected.groupby("ext_act_id").agg({"old_label":"mean", "new_label":"mean"}).reset_index(), on="ext_act_id")
+df_selected_plot = df_selected_plot.assign(digitized_loss_ratio = np.digitize(df_selected_plot["loss_ratio"], [0, 0.25, 0.5, 0.75], right=True))
+#%% Get diff reported days
+list_diff = []
+for _, df_selected_grp in df_selected.groupby("ext_act_id"):
+    if df_selected_grp.iloc[0]["new_label"] == 1:
+       list_diff.append((df_selected_grp.iloc[0]["DANGER_DATE"]-datetime.datetime.strptime(df_selected_grp.iloc[0]["Flood_date"], "%m/%d/%Y")).days)
+fig, ax = plt.subplots()
+sns.histplot(list_diff, bins="auto", ax=ax)
+ax.set_xticks(np.arange(np.round(ax.get_xlim()[0]), np.round(ax.get_xlim()[1]), 5))
+ax.set_xlabel("Reported_date - Ice_date")
+fig.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210804\Report_diff.png", bbox_inches="tight")
+#%% 
+plt.close("all")
+for digitized_loss_ratio, df_selected_plot_grp in df_selected_plot.groupby("digitized_loss_ratio"):
+    cnf_matrix = confusion_matrix(df_selected_plot_grp["old_label"], df_selected_plot_grp["new_label"])
+    plt.figure()
+    sns.heatmap(cnf_matrix, annot=True, cbar=False)
+    plt.xlabel("New label")
+    plt.ylabel("Old label")
+    plt.title(f"Bin: {digitized_loss_ratio}")
+    plt.savefig(rf"F:\CROP-PIER\CROP-WORK\Presentation\20210804\Bin-{digitized_loss_ratio}.png", bbox_inches="tight")
+cnf_matrix = confusion_matrix(df_selected_plot["old_label"], df_selected_plot["new_label"])
+plt.figure()
+sns.heatmap(cnf_matrix, annot=True, cbar=False)
+plt.xlabel("New label")
+plt.ylabel("Old label")
+plt.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210804\New-label.png", bbox_inches="tight")
+#%%
+fig, ax = plt.subplots()
+ax, y_predict_prob, fpr, tpr, thresholds, auc = plot_roc_curve(model, df_plot_train[model_parameters], df_plot_train["label"], "Train", ax=ax)
+ax, _, _, _, _, _ = plot_roc_curve(model, df_plot_test[model_parameters], df_plot_test["label"], "Test", color="r-", ax=ax)
+plot_roc_curve(model, df_selected_plot[model_parameters], df_selected_plot["new_label"], "Sandbox", color="g-", ax=ax)
 ax.grid()
 ax.legend(loc=4)
-fig.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\ROC(all).png", bbox_inches="tight")
-plt.figure(figsize=(16, 9))
-plt.barh([a[1] for a in sorted(zip(model.feature_importances_, model_parameters))], [100*a[0] for a in sorted(zip(model.feature_importances_, model_parameters))])
-plt.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210714\Feature_importance(all).png", bbox_inches="tight")
+fig.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210804\ROC.png", bbox_inches="tight")
+#%%
+list_diff_2019 = []
+list_diff_2020 = []
+for (_, final_crop_year), df_selected_grp in df_selected.groupby(["ext_act_id", "final_crop_year"]):
+    if df_selected_grp.iloc[0]["new_label"] == 1:
+        if final_crop_year == 2019:
+            list_diff_2019.append((df_selected_grp.iloc[0]["DANGER_DATE"]-datetime.datetime.strptime(df_selected_grp.iloc[0]["Flood_date"], "%m/%d/%Y")).days)
+        elif final_crop_year == 2020:
+            list_diff_2020.append((df_selected_grp.iloc[0]["DANGER_DATE"]-datetime.datetime.strptime(df_selected_grp.iloc[0]["Flood_date"], "%m/%d/%Y")).days)
+plt.figure()
+sns.histplot(list_diff_2019)
+plt.xlabel("Reported_date - Ice_date")
+plt.title("2019")
+plt.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210804\Diff_date_2019.png", bbox_inches="tight")
 
+plt.figure()
+sns.histplot(list_diff_2020)
+plt.xlabel("Reported_date - Ice_date")
+plt.title("2020")
+plt.savefig(r"F:\CROP-PIER\CROP-WORK\Presentation\20210804\Diff_date_2020.png", bbox_inches="tight")
+#%%
 # # Calculate BCE and clean p90
 # df_plot_train = df_plot_train.assign(predict_proba = model.predict_proba(df_plot_train[model_parameters])[:, 1])
 # df_plot_train = df_plot_train.assign(bce = -(df_plot_train["label"]*np.log(df_plot_train["predict_proba"]))-((1-df_plot_train["label"])*np.log(1-df_plot_train["predict_proba"])))
@@ -393,47 +672,62 @@ plt.figure()
 sns.histplot(df_plot_test_fa["bce"], stat="probability", cumulative=True, element="step", fill=False)
 #%% Step2: If nonflood -> skip. Otherwise -> Regression model
 #%%
-df_plot_train_loss = df_plot_train[df_plot_train["label"] == 1]
-df_plot_test_loss = df_plot_test[df_plot_test["label"] == 1]
-#%%
-from sklearn.ensemble import RandomForestRegressor
-reg = LinearRegression(n_jobs=-1)
-reg.fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
-predict_loss_ratio = reg.predict(df_plot_test_loss[model_parameters])
-predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
 
-df_reg = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
-df_reg.columns = ["predict", "actual"]
-sns.histplot(df_reg["actual"]-df_reg["predict"], kde=True, binrange=(-1, 1))
-plt.xlabel("Actual-Predict")
-# sns.histplot(df_reg["actual"], binrange=(0, 1))
-# sns.histplot(df_reg["predict"], binrange=(0, 1))
-#%%
-# #%%
-# from sklearn.svm import SVR
-# svr = LinearRegression().fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
-# predict_loss_ratio = svr.predict(df_plot_test_loss[model_parameters])
-# predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
 
-# df_reg = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
-# df_reg.columns = ["predict", "actual"]
-# #%%
-# sns.histplot(df_reg["actual"]-df_reg["predict"], kde=True, binrange=(-1, 1))
-# sns.histplot(df_reg["actual"], binrange=(0, 1))
-# sns.histplot(df_reg["predict"], binrange=(0, 1))
+plt.figure()
+sns.histplot(reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.00) & (df_plot_train_reg["loss_ratio"] <= 0.25), model_parameters]), bins="auto")
+plt.figure()
 
-# #%%
-# reg = LinearRegression(n_jobs=-1)
-# reg.fit(df_plot_train_loss[model_parameters], df_plot_train_loss["loss_ratio"])
-# #%%
-# predict_loss_ratio = reg.predict(df_plot_test_loss[model_parameters])
-# predict_loss_ratio = np.clip(predict_loss_ratio, 0, 1)
-# df_ref = pd.DataFrame([predict_loss_ratio, df_plot_test_loss["loss_ratio"]]).T
-# df_ref.columns = ["predict", "actual"]
-# #%%
-# from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-# print(f'{mean_squared_error(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f} {mean_absolute_error(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f} {r2_score(df_plot_test_loss["loss_ratio"], predict_loss_ratio):.2f}')
-  
+sns.histplot(reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.25) & (df_plot_train_reg["loss_ratio"] <= 0.50), model_parameters]), bins="auto")
+plt.figure()
+
+sns.histplot(reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.50) & (df_plot_train_reg["loss_ratio"] <= 0.75), model_parameters]), bins="auto")
+plt.figure()
+
+sns.histplot(reg.predict(df_plot_train_reg.loc[(df_plot_train_reg["loss_ratio"] > 0.75) & (df_plot_train_reg["loss_ratio"] <= 1.00), model_parameters]), bins="auto")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
