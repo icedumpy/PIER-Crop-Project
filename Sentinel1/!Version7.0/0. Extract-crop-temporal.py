@@ -3,9 +3,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from icedumpy.io_tools import load_model
-from icedumpy.df_tools import load_vew, clean_and_process_vew, load_mapping, set_index_for_loc
+from icedumpy.df_tools import load_mapping, set_index_for_loc
 tqdm.pandas()
 #%%
 def add_anchor_date(df_vew):
@@ -30,7 +28,7 @@ def get_column_index(columns_s1_temporal, date):
 
 def add_missing_columns(df_s1_overall):
     df_s1_overall = df_s1_overall.copy()
-    columns_s1_temporal_ideal = pd.date_range(df_s1_overall.columns[7], df_s1_overall.columns[-1], freq="6D")
+    columns_s1_temporal_ideal = pd.date_range(str((datetime.datetime.strptime(df_s1_overall.columns[7], "%Y%m%d")-datetime.timedelta(days=42)).date()).replace("-", ""), df_s1_overall.columns[-1], freq="6D")
     for column in columns_s1_temporal_ideal:
         column = str(column.date()).replace("-", "")
         if not column in df_s1_overall.columns[7:]:
@@ -39,11 +37,14 @@ def add_missing_columns(df_s1_overall):
     df_s1_overall = df_s1_overall[df_s1_overall.columns[:7].tolist()+sorted(df_s1_overall.columns[7:])]
     return df_s1_overall
 #%%
-root_df_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+root_df_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal_version5(at-False)"
 root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_plant_info_official_polygon_disaster_all_rice_by_year"
 root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_vew_plant_info_official_polygon_disaster_all_rice_by_year_mapping(at-False)"
 root_df_s1_overall = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_pixel(at-False)"
+path_df_breed_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department_edited_by_ronnachai.csv"
 os.makedirs(root_df_temporal, exist_ok=True)
+
+df_breed_code = pd.read_csv(path_df_breed_code)
 #%%
 # Set dtypes
 dict_dtypes = {
@@ -77,11 +78,6 @@ dict_dtypes = {
     't27': "float32",
     't28': "float32",
     't29': "float32",
-    't30': "float32",
-    't31': "float32",
-    't32': "float32",
-    't33': "float32",
-    't34': "float32",
     'EXT_PROFILE_CENTER_ID': "int64",
     'PLANT_PROVINCE_CODE': "int32",
     'PLANT_AMPHUR_CODE': "int32",
@@ -94,6 +90,9 @@ dict_dtypes = {
     'ACT_WA_ORI': "int32",
     'TOTAL_ACTUAL_PLANT_AREA_IN_WA': "int32",
     'in_season_rice_f': "int32",
+    'photo_sensitive_f': "uint8",
+    'sticky_rice_f': "uint8",
+    'jasmine_rice_f': "uint8",
     'loss_ratio': 'float32',
     'polygon_area_in_square_m': 'float32',
     'row': "int32",
@@ -124,39 +123,58 @@ for strip_id in list_strip_id:
         columns_s1_temporal = np.array([datetime.datetime.strptime(column, "%Y%m%d") for column in df_s1_overall.columns[7:]])
         columns_s1_temporal = np.insert(columns_s1_temporal, 0, columns_s1_temporal[0]-datetime.timedelta(days=6))
         
-        # Filter df_vew by final_plant_date (later or equal temporal first date)
-        df_vew = df_vew.loc[df_vew["final_plant_date"] >= datetime.datetime.strptime(df_s1_overall.columns[7], "%Y%m%d")] # This is sentinal1(A|B) first date
-
-        # Change harvest date to plant date + 180 days (change to 210 (t35))
-        df_vew["final_harvest_date"] = df_vew["final_plant_date"] + datetime.timedelta(days=210)
+        # Filter out df_vew by ext_act_id
+        df_vew = df_vew[df_vew["ext_act_id"].isin(df_s1_overall["ext_act_id"])]
         
+        # Merge vew with breed_code
+        df_vew = pd.merge(df_vew, df_breed_code, how="inner", on="BREED_CODE")
+        
+        # =============================================================================ArithmeticError
+        # Change harvest date to the specific date (for photosensitive rice)
+        # =============================================================================
+        df_vew.loc[df_vew["photo_sensitive_f"] == 1, "harvest_date"] = df_vew.loc[df_vew["photo_sensitive_f"] == 1, "harvest_date"] + "-"+df_vew.loc[df_vew["photo_sensitive_f"] == 1, "final_plant_date"].dt.year.astype(str)
+        df_vew.loc[df_vew["photo_sensitive_f"] == 1, "adjusted_harvest_date"] = pd.to_datetime(df_vew.loc[df_vew["photo_sensitive_f"] == 1, "harvest_date"])
+        for row in df_vew.loc[df_vew["photo_sensitive_f"] == 1].itertuples():
+            if (row.adjusted_harvest_date-row.final_plant_date).days < 0:
+                df_vew.at[row.Index, "adjusted_harvest_date"]+=pd.offsets.DateOffset(years=1)
+        # Also change plant date to harvest date - 180 days (for photosensitive rice)
+        df_vew.loc[df_vew["photo_sensitive_f"] == 1, "adjusted_plant_date"] = df_vew.loc[df_vew["photo_sensitive_f"] == 1, "adjusted_harvest_date"] - datetime.timedelta(days=180)
+
+        # =============================================================================
+        # Change harvest date to the specific date (for non-photosensitive rice)
+        # =============================================================================
+        df_vew.loc[df_vew["photo_sensitive_f"] == 0, "adjusted_harvest_date"] = df_vew.loc[df_vew["photo_sensitive_f"] == 0, "final_plant_date"] + datetime.timedelta(days=180)
+        df_vew.loc[df_vew["photo_sensitive_f"] == 0, "adjusted_plant_date"] = df_vew.loc[df_vew["photo_sensitive_f"] == 0, "final_plant_date"]
+        
+        # Filter df_vew by adjusted_plant_date (later or equal temporal first date)
+        df_vew = df_vew.loc[df_vew["adjusted_plant_date"] >= datetime.datetime.strptime(df_s1_overall.columns[7], "%Y%m%d")] # This is sentinal1(A|B) first date
+
         # Add loss ratio
         df_vew = df_vew.assign(loss_ratio = np.where(pd.isna(df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']).values, 0, df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']))
         
         # Drop deflect
-        df_vew = df_vew[~df_vew["BREED_CODE"].isna()]
         df_vew = df_vew[~df_vew["TOTAL_ACTUAL_PLANT_AREA_IN_WA"].isna()]
         
-        # Want to get only the data that within the crop cycle (plantdate to plantdate+210 days)
+        # Want to get only the data that within the crop cycle
         list_df = []
         for vew in tqdm(df_vew.itertuples(), total=len(df_vew)):
             try:
                 ext_act_id = vew.ext_act_id
-                date_plant = vew.final_plant_date
-                date_harvest = vew.final_harvest_date
+                date_plant = vew.adjusted_plant_date
+                date_harvest = vew.adjusted_harvest_date
                 # Get column index
                 column_plant = get_column_index(columns_s1_temporal, date_plant)
                 column_harvest = get_column_index(columns_s1_temporal, date_harvest)
 
-                # Get pixel data (plant -> harvest) # 35 periods
+                # Get pixel data (plant -> harvest) # 30 periods
                 arr_s1_overall = df_s1_overall.loc[ext_act_id]
-
+                
                 arr_s1_temporal = arr_s1_overall[df_s1_overall.columns[7:]].values
                 if len(arr_s1_temporal.shape) == 1:
                     arr_s1_temporal = arr_s1_temporal.reshape(1, -1)
 
                 arr_s1_temporal = arr_s1_temporal[:, column_plant:column_harvest]
-                assert arr_s1_temporal.shape[-1] == 35
+                assert arr_s1_temporal.shape[-1] == 30
 
                 df = pd.DataFrame(arr_s1_temporal, columns=[f"t{i}" for i in range(arr_s1_temporal.shape[-1])])
                 df = df.assign(**{df_vew.columns[i]: vew[i+1] for i in range(len(df_vew.columns))})
@@ -170,10 +188,10 @@ for strip_id in list_strip_id:
                     df["row"] = arr_s1_overall["row"]
                     df["col"] = arr_s1_overall["col"]
                 list_df.append(df)
-            except:
-                print(ext_act_id)
+            except Exception as e:
+                # print(ext_act_id, type(e))
                 pass
-        
+                
         # Skip if empty
         if len(list_df) == 0:
             continue
@@ -184,7 +202,3 @@ for strip_id in list_strip_id:
 
         df.to_parquet(path_save)
 #%%
-for key in dict_dtypes.keys():
-    print(key)
-    df.astype({key:dict_dtypes[key]})
-    

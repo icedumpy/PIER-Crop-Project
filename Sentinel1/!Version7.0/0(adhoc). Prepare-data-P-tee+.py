@@ -86,23 +86,23 @@ def assign_sharp_drop(df):
     # Loop for each group (group by ext_act_id)
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
-        # Find which "period" (1, 2, or 3) gives the most extreme diff*backscatter
-        periods = int(np.argmax([
-            (df_grp[columns_model].diff(periods=1, axis=1)*df_grp[columns_model]).max(axis=1).max(), 
-            (df_grp[columns_model].diff(periods=2, axis=1)*df_grp[columns_model]).max(axis=1).max(),
-            (df_grp[columns_model].diff(periods=3, axis=1)*df_grp[columns_model]).max(axis=1).max()
+        # Find which "period" (1, 2, or 3) gives min(diff+backscatter)
+        periods = int(np.argmin([
+            (df_grp[columns_model].diff(periods=1, axis=1)+df_grp[columns_model]).min(axis=1).min(),
+            (df_grp[columns_model].diff(periods=2, axis=1)+df_grp[columns_model]).min(axis=1).min(),
+            (df_grp[columns_model].diff(periods=3, axis=1)+df_grp[columns_model]).min(axis=1).min()
         ])+1)
         
         # Find which column
         drop = df_grp[columns_model].diff(periods=periods, axis=1)
-        coef = drop*df_grp[columns_model]
-        flood_column = coef.max().idxmax()
+        coef = drop+df_grp[columns_model]
+        flood_column = coef.min().idxmin()
         
         # Add drop value
         df_grp["drop"] = drop[flood_column]
         
         # Add the most extreme diff*backscatter
-        df_grp["drop*bc"] = coef.max(axis=1).values
+        df_grp["drop+bc"] = coef.min(axis=1).values
         
         # Add sharp-drop column
         flood_column = int(flood_column[1:])
@@ -110,7 +110,13 @@ def assign_sharp_drop(df):
         
         # Extract data (-2, +2)
         df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]] = df_grp[[f"t{i}" for i in range(flood_column-2, flood_column+3)]].values
-        list_df.append(df_grp)
+        
+        # Background columns (before flood)
+        columns_background = [f"t{i}" for i in range(max(0, flood_column-10), flood_column-1)]
+        df_grp["background_bc"] = df_grp[columns_background].median(axis=1)
+
+        # Append to list
+        list_df.append(df_grp)    
         
     # Concat and return
     df = pd.concat(list_df, ignore_index=True)
@@ -125,7 +131,9 @@ def convert_pixel_level_to_plot_level(df):
         PLANT_PROVINCE_CODE = df_grp.iloc[0]["PLANT_PROVINCE_CODE"]
         PLANT_AMPHUR_CODE = df_grp.iloc[0]["PLANT_AMPHUR_CODE"]
         PLANT_TAMBON_CODE = df_grp.iloc[0]["PLANT_TAMBON_CODE"]
-
+        DANGER_TYPE = df_grp.iloc[0]["DANGER_TYPE"]
+        BREED_CODE = df_grp.iloc[0]['BREED_CODE']
+        
         # Agg parameters
         n_pixel = len(df_grp)
         drop_min = df_grp["drop"].min()
@@ -133,16 +141,22 @@ def convert_pixel_level_to_plot_level(df):
         drop_p25 = df_grp["drop"].quantile(0.25)
         drop_p50 = df_grp["drop"].quantile(0.50)
         drop_p75 = df_grp["drop"].quantile(0.75)
-        drop_bc_min = df_grp["drop*bc"].min()
-        drop_bc_max = df_grp["drop*bc"].max()
-        drop_bc_p25 = df_grp["drop*bc"].quantile(0.25)
-        drop_bc_p50 = df_grp["drop*bc"].quantile(0.50)
-        drop_bc_p75 = df_grp["drop*bc"].quantile(0.75)
+        drop_bc_min = df_grp["drop+bc"].min()
+        drop_bc_max = df_grp["drop+bc"].max()
+        drop_bc_p25 = df_grp["drop+bc"].quantile(0.25)
+        drop_bc_p50 = df_grp["drop+bc"].quantile(0.50)
+        drop_bc_p75 = df_grp["drop+bc"].quantile(0.75)
         bc_min = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].min(axis=0).values
         bc_max = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].max(axis=0).values
         bc_p25 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.25, axis=0).values
         bc_p50 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.50, axis=0).values
         bc_p75 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.75, axis=0).values
+        background_bc_min = df_grp["background_bc"].min()
+        background_bc_max = df_grp["background_bc"].max()
+        background_bc_p25 = df_grp["background_bc"].quantile(0.25)
+        background_bc_p50 = df_grp["background_bc"].quantile(0.50)
+        background_bc_p75 = df_grp["background_bc"].quantile(0.75)
+        
         drop_column = df_grp.iloc[0]["drop_column"]
         if drop_column in columns_age2:
             drop_age = 1
@@ -157,6 +171,8 @@ def convert_pixel_level_to_plot_level(df):
             'PLANT_PROVINCE_CODE':PLANT_PROVINCE_CODE,
             'PLANT_AMPHUR_CODE':PLANT_AMPHUR_CODE,
             'PLANT_TAMBON_CODE':PLANT_TAMBON_CODE,
+            'DANGER_TYPE':DANGER_TYPE,
+            'BREED_CODE':BREED_CODE,
             "n_pixel":n_pixel,
             "drop_age":drop_age,
             "drop_min":drop_min,
@@ -164,11 +180,11 @@ def convert_pixel_level_to_plot_level(df):
             "drop_p25":drop_p25,
             "drop_p50":drop_p50,
             "drop_p75":drop_p75,
-            "drop*bc_min":drop_bc_min,
-            "drop*bc_max":drop_bc_max,
-            "drop*bc_p25":drop_bc_p25,
-            "drop*bc_p50":drop_bc_p50,
-            "drop*bc_p75":drop_bc_p75,
+            "drop+bc_min":drop_bc_min,
+            "drop+bc_max":drop_bc_max,
+            "drop+bc_p25":drop_bc_p25,
+            "drop+bc_p50":drop_bc_p50,
+            "drop+bc_p75":drop_bc_p75,
             "bc(t-2)_min":bc_min[0],
             "bc(t-1)_min":bc_min[1],
             "bc(t)_min"  :bc_min[2],
@@ -194,6 +210,11 @@ def convert_pixel_level_to_plot_level(df):
             "bc(t)_p75"  :bc_p75[2],
             "bc(t+1)_p75":bc_p75[3],
             "bc(t+2)_p75":bc_p75[4],
+            "background_bc_min":background_bc_min,
+            "background_bc_max":background_bc_max,
+            "background_bc_p25":background_bc_p25,
+            "background_bc_p50":background_bc_p50,
+            "background_bc_p75":background_bc_p75,
             "loss_ratio":loss_ratio
         }
         
@@ -209,7 +230,7 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     return thresholds[index]
 #%%
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
-root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_version4(at-False)"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_version4.5(at-False)"
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 
 # Define columns' group name
@@ -226,15 +247,24 @@ columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
 df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
-for strip_id in ["302", "303", "304", "305", "306", "401", "402", "403"]:
-    print(strip_id)
-    df = pd.concat([pd.read_parquet(os.path.join(root_vew, file)) for file in os.listdir(root_vew) if file.split(".")[0][-3:] == strip_id], ignore_index=True)
+for file in os.listdir(root_vew)[2::3]:
+    print(file)
+    path_file = os.path.join(root_vew, file)
+    if os.path.exists(os.path.join(root_save, file.replace("temporal", "version4.5"))):
+        continue
+    
+    # Load data
+    df = pd.read_parquet(path_file)
+    
+    # Processing
     df = df[df["in_season_rice_f"] == 1]
-    df = df[(df["DANGER_TYPE"] == "อุทกภัย") | (df["DANGER_TYPE"]).isna()]
     df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-    for PLANT_PROVINCE_CODE, df_grp in df.groupby("PLANT_PROVINCE_CODE"):
-        df_grp = convert_power_to_db(df_grp, columns_large)
-        df_grp = assign_sharp_drop(df_grp)
-        df_grp = pd.merge(df_grp, df_rice_code, on="BREED_CODE", how="inner") 
-        df_plot = convert_pixel_level_to_plot_level(df_grp)
-        df_plot.to_parquet(os.path.join(root_save, f"df_s1ab_version4_p{PLANT_PROVINCE_CODE}_s{strip_id}.parquet"))
+    df = convert_power_to_db(df, columns_large)
+    df = assign_sharp_drop(df)
+    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner") 
+    
+    # Convert to plot-level
+    df_plot = convert_pixel_level_to_plot_level(df)
+    # Save
+    df_plot.to_parquet(os.path.join(root_save, file.replace("temporal", "version4.5")))
+#%%

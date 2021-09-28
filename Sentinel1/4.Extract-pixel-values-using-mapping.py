@@ -71,5 +71,3 @@ for file_raster in [file for file in os.listdir(root_raster) if file.endswith(".
 
 
 
-
-

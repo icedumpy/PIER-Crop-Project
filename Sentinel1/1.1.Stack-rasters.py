@@ -81,7 +81,6 @@ if __name__ == "__main__":
     root_raster = r"G:\!PIER\!FROM_2TB\Complete_VV_separate"
     list_ignored = [".xml", ".ini"]
     
-    # main("402", "S1AB", trs=True)
     for strip_id in ["101", "102", "103", "104", "105", "106", "107", "108", "109", 
                      "201", "202", "203", "204", "205", "206", "207", "208",
                      "301"]:
