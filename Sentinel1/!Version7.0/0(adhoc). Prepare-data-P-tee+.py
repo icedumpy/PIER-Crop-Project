@@ -115,6 +115,9 @@ def assign_sharp_drop(df):
         columns_background = [f"t{i}" for i in range(max(0, flood_column-10), flood_column-1)]
         df_grp["background_bc"] = df_grp[columns_background].median(axis=1)
 
+        # Background - bc
+        df_grp["background_bc-bc(t)"] = df_grp["background_bc"]-df_grp["bc(t)"]
+
         # Append to list
         list_df.append(df_grp)    
         
@@ -156,6 +159,11 @@ def convert_pixel_level_to_plot_level(df):
         background_bc_p25 = df_grp["background_bc"].quantile(0.25)
         background_bc_p50 = df_grp["background_bc"].quantile(0.50)
         background_bc_p75 = df_grp["background_bc"].quantile(0.75)
+        background_bc_minus_bc_t_min = df_grp["background_bc-bc(t)"].min()
+        background_bc_minus_bc_t_max = df_grp["background_bc-bc(t)"].max()
+        background_bc_minus_bc_t_p25 = df_grp["background_bc-bc(t)"].quantile(0.25)
+        background_bc_minus_bc_t_p50 = df_grp["background_bc-bc(t)"].quantile(0.50)
+        background_bc_minus_bc_t_p75 = df_grp["background_bc-bc(t)"].quantile(0.75)
         
         drop_column = df_grp.iloc[0]["drop_column"]
         if drop_column in columns_age2:
@@ -215,6 +223,11 @@ def convert_pixel_level_to_plot_level(df):
             "background_bc_p25":background_bc_p25,
             "background_bc_p50":background_bc_p50,
             "background_bc_p75":background_bc_p75,
+            "background_bc_minus_bc_t_min" : background_bc_minus_bc_t_min,
+            "background_bc_minus_bc_t_max" : background_bc_minus_bc_t_max,
+            "background_bc_minus_bc_t_p25" : background_bc_minus_bc_t_p25,
+            "background_bc_minus_bc_t_p50" : background_bc_minus_bc_t_p50,
+            "background_bc_minus_bc_t_p75" : background_bc_minus_bc_t_p75,
             "loss_ratio":loss_ratio
         }
         
@@ -247,7 +260,7 @@ columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
 df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
-for file in os.listdir(root_vew)[2::3]:
+for file in os.listdir(root_vew):
     print(file)
     path_file = os.path.join(root_vew, file)
     if os.path.exists(os.path.join(root_save, file.replace("temporal", "version4.5"))):
@@ -261,10 +274,29 @@ for file in os.listdir(root_vew)[2::3]:
     df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
     df = convert_power_to_db(df, columns_large)
     df = assign_sharp_drop(df)
-    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner") 
+    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="inner")
     
     # Convert to plot-level
     df_plot = convert_pixel_level_to_plot_level(df)
     # Save
     df_plot.to_parquet(os.path.join(root_save, file.replace("temporal", "version4.5")))
 #%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

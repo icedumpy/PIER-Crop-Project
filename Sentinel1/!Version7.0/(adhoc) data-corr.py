@@ -41,13 +41,12 @@ for source, df_datadict_grp in df_datadict.groupby("source"):
     print(source)
     columns_grp = df_datadict_grp["column_nm"].tolist()
     corr_mat = df[columns_grp].corr().abs()
-    
     ##
     ##
     
     plt.close('all')
     fig, ax = plt.subplots(figsize=(16, 16))
-    sns.heatmap(corr_mat, square=False, annot=False,
+    sns.heatmap(corr_mat, square=False, annot=True,
                 fmt=".2f", cbar=True, ax=ax)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
     fig.tight_layout()

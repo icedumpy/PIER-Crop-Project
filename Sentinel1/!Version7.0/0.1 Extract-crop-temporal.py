@@ -1,3 +1,4 @@
+# Note: This versoin uses adjusted plant_date and harvest_date (based on photosentive)
 import os
 import datetime
 import numpy as np
@@ -129,7 +130,7 @@ for strip_id in list_strip_id:
         # Merge vew with breed_code
         df_vew = pd.merge(df_vew, df_breed_code, how="inner", on="BREED_CODE")
         
-        # =============================================================================ArithmeticError
+        # =============================================================================
         # Change harvest date to the specific date (for photosensitive rice)
         # =============================================================================
         df_vew.loc[df_vew["photo_sensitive_f"] == 1, "harvest_date"] = df_vew.loc[df_vew["photo_sensitive_f"] == 1, "harvest_date"] + "-"+df_vew.loc[df_vew["photo_sensitive_f"] == 1, "final_plant_date"].dt.year.astype(str)
@@ -189,7 +190,7 @@ for strip_id in list_strip_id:
                     df["col"] = arr_s1_overall["col"]
                 list_df.append(df)
             except Exception as e:
-                # print(ext_act_id, type(e))
+                print(ext_act_id, type(e))
                 pass
                 
         # Skip if empty
