@@ -148,7 +148,7 @@ def extract_intensity_features(df_temporal, columns):
     df = pd.concat(list_df, ignore_index=True)
     return df 
 #%%
-root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\SMAP_L4`rootzone_features"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\SMAP_L4_smrootzone_features"
 root_df_temporal =  r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\SMAP_L4_smrootzone_temporal"
 list_p = np.unique([file.split(".")[0][-7:-5] for file in os.listdir(root_df_temporal)]).tolist()
 #%%

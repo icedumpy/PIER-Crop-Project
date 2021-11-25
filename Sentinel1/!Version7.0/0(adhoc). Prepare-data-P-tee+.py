@@ -260,6 +260,7 @@ columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
 df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
+# (vew == temporal) by the way.
 for file in os.listdir(root_vew):
     print(file)
     path_file = os.path.join(root_vew, file)

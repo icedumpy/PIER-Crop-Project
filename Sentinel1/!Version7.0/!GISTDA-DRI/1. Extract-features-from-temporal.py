@@ -16,24 +16,24 @@ def extract_extreme_features(df_temporal, columns):
     list_df = []
     for tambon_pcode, df_temporal_tambon in df_temporal.groupby(["tambon_pcode"]):
         # Max
-        historical_max_sm = df_temporal_tambon[columns].max(axis=1)
-        df_temporal_tambon = df_temporal_tambon.assign(**{"max" : historical_max_sm})
-        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_max" : 100*historical_max_sm.rank(pct=True)})
+        historical_max = df_temporal_tambon[columns].max(axis=1)
+        df_temporal_tambon = df_temporal_tambon.assign(**{"max" : historical_max})
+        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_max" : 100*historical_max.rank(pct=True)})
         
         # Min
-        historical_min_sm = df_temporal_tambon[columns].min(axis=1)
-        df_temporal_tambon = df_temporal_tambon.assign(**{"min" : historical_min_sm})
-        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_min" : 100*historical_min_sm.rank(pct=True)})
+        historical_min = df_temporal_tambon[columns].min(axis=1)
+        df_temporal_tambon = df_temporal_tambon.assign(**{"min" : historical_min})
+        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_min" : 100*historical_min.rank(pct=True)})
 
         # Med 
-        historical_med_sm = df_temporal_tambon[columns].median(axis=1)
-        df_temporal_tambon = df_temporal_tambon.assign(**{"med" : historical_med_sm})
-        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_med" : 100*historical_med_sm.rank(pct=True)})
+        historical_med = df_temporal_tambon[columns].median(axis=1)
+        df_temporal_tambon = df_temporal_tambon.assign(**{"med" : historical_med})
+        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_med" : 100*historical_med.rank(pct=True)})
 
         # Mean
-        historical_mean_sm = df_temporal_tambon[columns].mean(axis=1)
-        df_temporal_tambon = df_temporal_tambon.assign(**{"mean" : historical_mean_sm})
-        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_mean" : 100*historical_mean_sm.rank(pct=True)})
+        historical_mean = df_temporal_tambon[columns].mean(axis=1)
+        df_temporal_tambon = df_temporal_tambon.assign(**{"mean" : historical_mean})
+        df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_mean" : 100*historical_mean.rank(pct=True)})
         
         list_df.append(df_temporal_tambon)
     df = pd.concat(list_df, ignore_index=True)
