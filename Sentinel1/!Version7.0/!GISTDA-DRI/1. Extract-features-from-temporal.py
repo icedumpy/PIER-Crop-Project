@@ -25,7 +25,7 @@ def extract_extreme_features(df_temporal, columns):
         df_temporal_tambon = df_temporal_tambon.assign(**{"min" : historical_min})
         df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_min" : 100*historical_min.rank(pct=True)})
 
-        # Med 
+        # Median
         historical_med = df_temporal_tambon[columns].median(axis=1)
         df_temporal_tambon = df_temporal_tambon.assign(**{"med" : historical_med})
         df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_med" : 100*historical_med.rank(pct=True)})
@@ -87,6 +87,7 @@ def extract_intensity_features(df_temporal, columns):
     list_df = []
     for tambon_pcode, df_temporal_tambon in df_temporal.groupby(["tambon_pcode"]):
         pctl_temporal = 100*df_temporal_tambon[columns].T.melt()["value"].rank(pct=True).values.reshape(df_temporal_tambon[columns].shape)
+        
         # Above
         for pctl in [80, 85, 90, 95]:
             arr = (pctl_temporal > pctl).astype("int") 

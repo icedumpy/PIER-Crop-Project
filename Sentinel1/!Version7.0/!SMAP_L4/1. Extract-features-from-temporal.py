@@ -25,7 +25,7 @@ def extract_extreme_features(df_temporal, columns):
         df_temporal_tambon = df_temporal_tambon.assign(**{"min" : historical_min})
         df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_min" : 100*historical_min.rank(pct=True)})
 
-        # Med 
+        # Median
         historical_med = df_temporal_tambon[columns].median(axis=1)
         df_temporal_tambon = df_temporal_tambon.assign(**{"med" : historical_med})
         df_temporal_tambon = df_temporal_tambon.assign(**{"pctl_med" : 100*historical_med.rank(pct=True)})
