@@ -80,22 +80,30 @@ def initialize_plot(ylim=(-20, 0)):
 
     return fig, ax
 
-def assign_sharp_drop(df):
+def assign_sharp_drop(df, columns_temporal):
     df = df.copy()
+    
+    # Temporary column (t15)
+    df["t15"] = df["t14"]
     
     # Loop for each group (group by ext_act_id)
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
-        # Find which "period" (1, 2, or 3) gives min(diff+backscatter)
+        # If too early (before July), skip first growth stage (first 40 days)
+        if df_grp.iloc[0]["final_plant_date"].month < 7:
+            columns = columns_temporal[3:]
+        else:
+            columns = columns_temporal
+        
+        # Find which "period" (1 or 2) gives min(diff+backscatter)
         periods = int(np.argmin([
-            (df_grp[columns_model].diff(periods=1, axis=1)+df_grp[columns_model]).min(axis=1).min(),
-            (df_grp[columns_model].diff(periods=2, axis=1)+df_grp[columns_model]).min(axis=1).min(),
-            (df_grp[columns_model].diff(periods=3, axis=1)+df_grp[columns_model]).min(axis=1).min()
+            (df_grp[columns].diff(periods=1, axis=1)+df_grp[columns]).min(axis=1).min(),
+            (df_grp[columns].diff(periods=2, axis=1)+df_grp[columns]).min(axis=1).min(),
         ])+1)
         
         # Find which column
-        drop = df_grp[columns_model].diff(periods=periods, axis=1)
-        coef = drop+df_grp[columns_model]
+        drop = df_grp[columns].diff(periods=periods, axis=1)
+        coef = drop+df_grp[columns]
         flood_column = coef.min().idxmin()
         
         # Add drop value
@@ -104,22 +112,22 @@ def assign_sharp_drop(df):
         # Add the most extreme diff*backscatter
         df_grp["drop+bc"] = coef.min(axis=1).values
         
-        # Add sharp-drop column
+        # Add sharp drop column
         flood_column = int(flood_column[1:])
         df_grp["drop_column"] = f"t{flood_column}"
         
-        # Extract data (-2, +2)
-        df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]] = df_grp[[f"t{i}" for i in range(flood_column-2, flood_column+3)]].values
+        # Extract data (-1, +1)
+        df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]] = df_grp[[f"t{i}" for i in range(flood_column-1, flood_column+2)]].values
         
-        # Background columns (before flood)
-        columns_background = [f"t{i}" for i in range(max(0, flood_column-10), flood_column-1)]
+        # Background columns (2 months before flood)
+        columns_background = [f"t{i}" for i in range(max(0, flood_column-6), flood_column-1)] # 5 columns
         df_grp["background_bc"] = df_grp[columns_background].median(axis=1)
 
         # Background - bc
         df_grp["background_bc-bc(t)"] = df_grp["background_bc"]-df_grp["bc(t)"]
 
         # Append to list
-        list_df.append(df_grp)    
+        list_df.append(df_grp)
         
     # Concat and return
     df = pd.concat(list_df, ignore_index=True)
@@ -149,11 +157,11 @@ def convert_pixel_level_to_plot_level(df):
         drop_bc_p25 = df_grp["drop+bc"].quantile(0.25)
         drop_bc_p50 = df_grp["drop+bc"].quantile(0.50)
         drop_bc_p75 = df_grp["drop+bc"].quantile(0.75)
-        bc_min = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].min(axis=0).values
-        bc_max = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].max(axis=0).values
-        bc_p25 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.25, axis=0).values
-        bc_p50 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.50, axis=0).values
-        bc_p75 = df_grp[["bc(t-2)", "bc(t-1)", "bc(t)", "bc(t+1)", "bc(t+2)"]].quantile(0.75, axis=0).values
+        bc_min = df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]].min(axis=0).values
+        bc_max = df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]].max(axis=0).values
+        bc_p25 = df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]].quantile(0.25, axis=0).values
+        bc_p50 = df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]].quantile(0.50, axis=0).values
+        bc_p75 = df_grp[["bc(t-1)", "bc(t)", "bc(t+1)"]].quantile(0.75, axis=0).values
         background_bc_min = df_grp["background_bc"].min()
         background_bc_max = df_grp["background_bc"].max()
         background_bc_p25 = df_grp["background_bc"].quantile(0.25)
@@ -193,31 +201,21 @@ def convert_pixel_level_to_plot_level(df):
             "drop+bc_p25":drop_bc_p25,
             "drop+bc_p50":drop_bc_p50,
             "drop+bc_p75":drop_bc_p75,
-            "bc(t-2)_min":bc_min[0],
-            "bc(t-1)_min":bc_min[1],
-            "bc(t)_min"  :bc_min[2],
-            "bc(t+1)_min":bc_min[3],
-            "bc(t+2)_min":bc_min[4],
-            "bc(t-2)_max":bc_max[0],
-            "bc(t-1)_max":bc_max[1],
-            "bc(t)_max"  :bc_max[2],
-            "bc(t+1)_max":bc_max[3],
-            "bc(t+2)_max":bc_max[4],
-            "bc(t-2)_p25":bc_p25[0],
-            "bc(t-1)_p25":bc_p25[1],
-            "bc(t)_p25"  :bc_p25[2],
-            "bc(t+1)_p25":bc_p25[3],
-            "bc(t+2)_p25":bc_p25[4],
-            "bc(t-2)_p50":bc_p50[0],
-            "bc(t-1)_p50":bc_p50[1],
-            "bc(t)_p50"  :bc_p50[2],
-            "bc(t+1)_p50":bc_p50[3],
-            "bc(t+2)_p50":bc_p50[4],
-            "bc(t-2)_p75":bc_p75[0],
-            "bc(t-1)_p75":bc_p75[1],        
-            "bc(t)_p75"  :bc_p75[2],
-            "bc(t+1)_p75":bc_p75[3],
-            "bc(t+2)_p75":bc_p75[4],
+            "bc(t-1)_min":bc_min[0],
+            "bc(t)_min"  :bc_min[1],
+            "bc(t+1)_min":bc_min[2],
+            "bc(t-1)_max":bc_max[0],
+            "bc(t)_max"  :bc_max[1],
+            "bc(t+1)_max":bc_max[2],
+            "bc(t-1)_p25":bc_p25[0],
+            "bc(t)_p25"  :bc_p25[1],
+            "bc(t+1)_p25":bc_p25[2],
+            "bc(t-1)_p50":bc_p50[0],
+            "bc(t)_p50"  :bc_p50[1],
+            "bc(t+1)_p50":bc_p50[2],
+            "bc(t-1)_p75":bc_p75[0],        
+            "bc(t)_p75"  :bc_p75[1],
+            "bc(t+1)_p75":bc_p75[2],
             "background_bc_min":background_bc_min,
             "background_bc_max":background_bc_max,
             "background_bc_p25":background_bc_p25,
@@ -242,29 +240,28 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
 #%%
-root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
-root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_version4.5(at-False)"
+root_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_version4.5(at-False)"
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
+os.makedirs(root_save, exist_ok=True)
 
 # Define columns' group name
-columns = [f"t{i}" for i in range(0, 30)]
-columns_large = [f"t{i}" for i in range(0, 35)]
-columns_age1 = [f"t{i}" for i in range(0, 7)]   # 0-41
-columns_age2 = [f"t{i}" for i in range(7, 15)]  # 42-89
-columns_age3 = [f"t{i}" for i in range(15, 20)] # 90-119
-columns_age4 = [f"t{i}" for i in range(20, 30)] # 120-179
-
-columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
+columns_age1 = [f"t{i}" for i in range(0, 3)]   # 0-35
+columns_age2 = [f"t{i}" for i in range(3, 8)]   # 36-95
+columns_age3 = [f"t{i}" for i in range(8, 10)]  # 96-119
+columns_age4 = [f"t{i}" for i in range(10, 15)] # 120-179
+# columns_model = columns_age1[-1:]+columns_age2+columns_age3+columns_age4
+columns_temporal = [f"t{i}" for i in range(15)]
 #%%
 # Load df rice code
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
 df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
-# (vew == temporal) by the way.
-for file in os.listdir(root_vew):
+for file in os.listdir(root_temporal)[1::2]:
     print(file)
-    path_file = os.path.join(root_vew, file)
-    if os.path.exists(os.path.join(root_save, file.replace("temporal", "version4.5"))):
+    path_file = os.path.join(root_temporal, file)
+    path_save = os.path.join(root_save, file.replace("temporal", "version4.5"))
+    if os.path.exists(path_save):
         continue
     
     # Load data
@@ -273,23 +270,20 @@ for file in os.listdir(root_vew):
     # Processing
     df = df[df["in_season_rice_f"] == 1]
     df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-    df = convert_power_to_db(df, columns_large)
-    df = assign_sharp_drop(df)
+    df = convert_power_to_db(df, columns_temporal)
+    df = assign_sharp_drop(df, columns_temporal)
     df = pd.merge(df, df_rice_code, on="BREED_CODE", how="left")
     
     # Convert to plot-level
     df_plot = convert_pixel_level_to_plot_level(df)
     # Save
-    df_plot.to_parquet(os.path.join(root_save, file.replace("temporal", "version4.5")))
+    df_plot.to_parquet(path_save)
 #%%
-
-
-
-
-
-
-
-
+# ext_act_id = 9188184472
+# ice = df[df["ext_act_id"] == ext_act_id]
+# ice[columns_temporal] = np.power(10, ice[columns_temporal]/10)
+# #%%
+# ice2 = df_plot[df_plot["ext_act_id"] == ext_act_id]
 
 
 
