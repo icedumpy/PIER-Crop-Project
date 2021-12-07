@@ -161,7 +161,7 @@ def extract_features(df, columns_temporal):
                     f"pct_of_plot_with_backscatter_under({threshold})_19+_days_relax": pct_plot_19_relax,
                   }
             }
-        
+            
         # After finish extracting features (every threshold)
         list_data.append(dict_extracted_features)
     
@@ -174,9 +174,6 @@ df_info = get_temporal_file_info(root_temporal)
 columns_temporal = [f"t{i}" for i in range(30)]
 #%%
 for idx, file_info in df_info.iterrows():
-    if idx%2 == 0:
-        continue
-    
     print(idx, file_info["filename"])
     path_save = os.path.join(root_save, file_info["filename"].replace("temporal", "features"))
     if os.path.exists(path_save):
@@ -198,18 +195,3 @@ for idx, file_info in df_info.iterrows():
     if len(df) != 0:
         df.to_parquet(path_save)
 #%%
-#%%
-# df_grp = pd.DataFrame(
-#     np.array([[-20, -20, -20, -20, -20, -20, -20, -20, ], 
-#               [-19, -18, -17, -16, -16, -15, -17, -18, ]]),
-#     # columns = ["t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7"]
-#     columns = columns_for_feature
-# )       
-
-
-
-
-
-
-
-
