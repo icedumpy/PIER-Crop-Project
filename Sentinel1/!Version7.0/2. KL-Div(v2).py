@@ -18,6 +18,10 @@ df.loc[df["danger_type"].isin(["ฝนทิ้งช่วง", "ภัยแ�
 df.loc[df["danger_type"].isin(["อุทกภัย"]), "danger_type"] = "Flood"
 df.loc[df["danger_type"].isin(["ศัตรูพืชระบาด"]), "danger_type"] = "Other"
 #%%
+
+danger_type = "Flood"
+column = "bc(t)_p25"
+#%%
 dict_kl = dict()
 for danger_type in df["danger_type"].unique():
     if danger_type == None:

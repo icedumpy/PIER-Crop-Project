@@ -70,7 +70,6 @@ def main(strip_id, sat_type, trs=False):
     if sat_type == "S1AB":
         date_s1a = df_info_filtered.loc[df_info_filtered["sat_type"] == "S1B", "date"].min() - datetime.timedelta(days=6)
         df_info_filtered = df_info_filtered[df_info_filtered["date"] >= date_s1a]
-    
     create_vrt(path_vrt, df_info_filtered["path_file"].tolist(), (df_info_filtered["date"].dt.date.astype(str).str.split("-").str.join("") + "_" + df_info_filtered["sat_type"]).tolist())
     if trs:
         create_trs(path_trs, path_vrt, file_format='ENVI')
@@ -79,7 +78,7 @@ if __name__ == "__main__":
     root_raster_mapping = r"G:\!PIER\!FROM_2TB\s1_pixel_rowcol_map"
     root_temp = r"C:\Users\PongporC\Desktop\temp"
     root_raster = r"G:\!PIER\!FROM_2TB\Complete_VV_separate"
-    list_ignored = [".xml", ".ini"]
+    list_ignored = [".xml", ".ini", ".gstmp"]
     
     for strip_id in ["101", "102", "103", "104", "105", "106", "107", "108", "109", 
                      "201", "202", "203", "204", "205", "206", "207", "208",
