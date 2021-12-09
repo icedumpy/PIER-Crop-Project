@@ -82,6 +82,7 @@ def initialize_plot(ylim=(-20, 0)):
 
 def assign_sharp_drop(df, columns_temporal):
     df = df.copy()
+    columns = [f"t{i}" for i in range(2, 15)]
     
     # Temporary column (t15)
     df["t15"] = df["t14"]
@@ -89,11 +90,11 @@ def assign_sharp_drop(df, columns_temporal):
     # Loop for each group (group by ext_act_id)
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
-        # If too early (before July), skip first growth stage (first 40 days)
-        if df_grp.iloc[0]["final_plant_date"].month < 7:
-            columns = columns_temporal[3:]
-        else:
-            columns = columns_temporal
+        # # If too early (before July), skip first growth stage (first 40 days)
+        # if df_grp.iloc[0]["final_plant_date"].month < 7:
+        #     columns = columns_temporal[3:]
+        # else:
+        #     columns = columns_temporal
         
         # Find which "period" (1 or 2) gives min(diff+backscatter)
         periods = int(np.argmin([
@@ -257,7 +258,7 @@ columns_temporal = [f"t{i}" for i in range(15)]
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
 df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 #%%
-for file in os.listdir(root_temporal)[1::2]:
+for file in os.listdir(root_temporal)[2::3]:
     print(file)
     path_file = os.path.join(root_temporal, file)
     path_save = os.path.join(root_save, file.replace("temporal", "version4.5"))
