@@ -39,19 +39,19 @@ def extract_extreme_features(df_temporal, columns):
     df = pd.concat(list_df, ignore_index=True)
     return df
 
-def extract_distribution_features(df_temporal, columns):
+def extract_distribution_features(df_temporal, columns, label):
     df_temporal = df_temporal.copy()
     columns_no_period = [
-        'no_period_in_hist_p0-p10' , 'no_period_in_hist_p10-p20', 'no_period_in_hist_p20-p30',
-        'no_period_in_hist_p30-p40', 'no_period_in_hist_p40-p50', 'no_period_in_hist_p50-p60',
-        'no_period_in_hist_p60-p70', 'no_period_in_hist_p70-p80', 'no_period_in_hist_p80-p90',
-        'no_period_in_hist_p90-p100'
+        f'{label}_no_period_in_hist_p0-p10' , f'{label}_no_period_in_hist_p10-p20', f'{label}_no_period_in_hist_p20-p30',
+        f'{label}_no_period_in_hist_p30-p40', f'{label}_no_period_in_hist_p40-p50', f'{label}_no_period_in_hist_p50-p60',
+        f'{label}_no_period_in_hist_p60-p70', f'{label}_no_period_in_hist_p70-p80', f'{label}_no_period_in_hist_p80-p90',
+        f'{label}_no_period_in_hist_p90-p100'
     ]
     columns_pct_period= [
-        'pct_period_in_hist_p0-p10' , 'pct_period_in_hist_p10-p20', 'pct_period_in_hist_p20-p30',
-        'pct_period_in_hist_p30-p40', 'pct_period_in_hist_p40-p50', 'pct_period_in_hist_p50-p60',
-        'pct_period_in_hist_p60-p70', 'pct_period_in_hist_p70-p80', 'pct_period_in_hist_p80-p90',
-        'pct_period_in_hist_p90-p100'
+        f'{label}_pct_period_in_hist_p0-p10' , f'{label}_pct_period_in_hist_p10-p20', f'{label}_pct_period_in_hist_p20-p30',
+        f'{label}_pct_period_in_hist_p30-p40', f'{label}_pct_period_in_hist_p40-p50', f'{label}_pct_period_in_hist_p50-p60',
+        f'{label}_pct_period_in_hist_p60-p70', f'{label}_pct_period_in_hist_p70-p80', f'{label}_pct_period_in_hist_p80-p90',
+        f'{label}_pct_period_in_hist_p90-p100'
     ]
     
     list_df = []
@@ -64,24 +64,24 @@ def extract_distribution_features(df_temporal, columns):
         # Faster (50x)
         pctl_temporal = 100*df_temporal_tambon[columns].T.melt()["value"].rank(pct=True).values.reshape(df_temporal_tambon[columns].shape)
         df_temporal_tambon = df_temporal_tambon.assign(**{
-            "no_period_in_hist_p0-p10"  :((pctl_temporal >= 0) & (pctl_temporal <= 10)).sum(axis=1),
-            "no_period_in_hist_p10-p20" :((pctl_temporal > 10) & (pctl_temporal <= 20)).sum(axis=1),
-            "no_period_in_hist_p20-p30" :((pctl_temporal > 20) & (pctl_temporal <= 30)).sum(axis=1),
-            "no_period_in_hist_p30-p40" :((pctl_temporal > 30) & (pctl_temporal <= 40)).sum(axis=1),
-            "no_period_in_hist_p40-p50" :((pctl_temporal > 40) & (pctl_temporal <= 50)).sum(axis=1),
-            "no_period_in_hist_p50-p60" :((pctl_temporal > 50) & (pctl_temporal <= 60)).sum(axis=1),
-            "no_period_in_hist_p60-p70" :((pctl_temporal > 60) & (pctl_temporal <= 70)).sum(axis=1),
-            "no_period_in_hist_p70-p80" :((pctl_temporal > 70) & (pctl_temporal <= 80)).sum(axis=1),
-            "no_period_in_hist_p80-p90" :((pctl_temporal > 80) & (pctl_temporal <= 90)).sum(axis=1),
-            "no_period_in_hist_p90-p100":(pctl_temporal > 90).sum(axis=1)
+            f"{label}_no_period_in_hist_p0-p10"  :((pctl_temporal >= 0) & (pctl_temporal <= 10)).sum(axis=1),
+            f"{label}_no_period_in_hist_p10-p20" :((pctl_temporal > 10) & (pctl_temporal <= 20)).sum(axis=1),
+            f"{label}_no_period_in_hist_p20-p30" :((pctl_temporal > 20) & (pctl_temporal <= 30)).sum(axis=1),
+            f"{label}_no_period_in_hist_p30-p40" :((pctl_temporal > 30) & (pctl_temporal <= 40)).sum(axis=1),
+            f"{label}_no_period_in_hist_p40-p50" :((pctl_temporal > 40) & (pctl_temporal <= 50)).sum(axis=1),
+            f"{label}_no_period_in_hist_p50-p60" :((pctl_temporal > 50) & (pctl_temporal <= 60)).sum(axis=1),
+            f"{label}_no_period_in_hist_p60-p70" :((pctl_temporal > 60) & (pctl_temporal <= 70)).sum(axis=1),
+            f"{label}_no_period_in_hist_p70-p80" :((pctl_temporal > 70) & (pctl_temporal <= 80)).sum(axis=1),
+            f"{label}_no_period_in_hist_p80-p90" :((pctl_temporal > 80) & (pctl_temporal <= 90)).sum(axis=1),
+            f"{label}_no_period_in_hist_p90-p100":(pctl_temporal > 90).sum(axis=1)
         })
-        df_temporal_tambon = df_temporal_tambon.assign(**{"total_period" : (~df_temporal_tambon[columns].isna()).sum(axis=1)})
-        df_temporal_tambon[columns_pct_period] = 100*df_temporal_tambon[columns_no_period].divide(df_temporal_tambon["total_period"], axis=0)
+        df_temporal_tambon = df_temporal_tambon.assign(**{f"{label}_total_period" : (~df_temporal_tambon[columns].isna()).sum(axis=1)})
+        df_temporal_tambon[columns_pct_period] = 100*df_temporal_tambon[columns_no_period].divide(df_temporal_tambon[f"{label}_total_period"], axis=0)
         list_df.append(df_temporal_tambon)
     df = pd.concat(list_df, ignore_index=True)
     return df
 
-def extract_intensity_features(df_temporal, columns):
+def extract_intensity_features(df_temporal, columns, label):
     df_temporal = df_temporal.copy()
     # Intensity           
     list_df = []
@@ -113,8 +113,8 @@ def extract_intensity_features(df_temporal, columns):
                     list_consecutive_relax.append(consecutive_one(arr[i]))
         
             df_temporal_tambon = df_temporal_tambon.assign(**{
-                f"cnsct_period_above_{pctl}_strict" : list_consecutive_strict,
-                f"cnsct_period_above_{pctl}_relax" : list_consecutive_relax
+                f"{label}_cnsct_period_above_{pctl}_strict" : list_consecutive_strict,
+                f"{label}_cnsct_period_above_{pctl}_relax" : list_consecutive_relax
             })
         list_df.append(df_temporal_tambon)
     df = pd.concat(list_df, ignore_index=True)
@@ -124,7 +124,11 @@ root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\gistda_dri_feat
 root_df_temporal =  r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\gistda_dri_temporal"
 list_p = np.unique([file.split(".")[0][-7:-5] for file in os.listdir(root_df_temporal)]).tolist()
 #%%
+# repeat cycle = 7 days 
 columns_all = [f"t{i}" for i in range(26)] # Temporal columns ["t0", "t1", ..., "tn"]
+columns_s1 = [f"t{i}" for i in range(6)] # 0-42
+columns_s2 = [f"t{i}" for i in range(6, 13)] # 42-91
+columns_s3 = [f"t{i}" for i in range(13, 26)] # 90+
 #%%
 # Loop for each province -> then each tambon
 for p in list_p:
@@ -135,10 +139,16 @@ for p in list_p:
     df_temporal = extract_extreme_features(df_temporal, columns_all)
     
     # Distribution
-    df_temporal = extract_distribution_features(df_temporal, columns_all)
+    df_temporal = extract_distribution_features(df_temporal, columns_all, label="wh_ssn")
+    df_temporal = extract_distribution_features(df_temporal, columns_s1, label="s1")
+    df_temporal = extract_distribution_features(df_temporal, columns_s2, label="s2")
+    df_temporal = extract_distribution_features(df_temporal, columns_s3, label="s3")
     
     # Intensity
-    df_temporal = extract_intensity_features(df_temporal, columns_all)
+    df_temporal = extract_intensity_features(df_temporal, columns_all, label="wh_ssn")
+    df_temporal = extract_intensity_features(df_temporal, columns_s1, label="s1")
+    df_temporal = extract_intensity_features(df_temporal, columns_s2, label="s2")
+    df_temporal = extract_intensity_features(df_temporal, columns_s3, label="s3")
     
     # Save (groupby year)
     for year, df_temporal_grp in df_temporal.groupby("final_plant_year"):
