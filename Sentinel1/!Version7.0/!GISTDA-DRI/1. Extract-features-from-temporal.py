@@ -128,7 +128,8 @@ list_p = np.unique([file.split(".")[0][-7:-5] for file in os.listdir(root_df_tem
 columns_all = [f"t{i}" for i in range(26)] # Temporal columns ["t0", "t1", ..., "tn"]
 columns_s1 = [f"t{i}" for i in range(6)] # 0-42
 columns_s2 = [f"t{i}" for i in range(6, 13)] # 42-91
-columns_s3 = [f"t{i}" for i in range(13, 26)] # 90+
+columns_s3 = [f"t{i}" for i in range(13, 17)] # 90-120
+columns_s4 = [f"t{i}" for i in range(17, 26)] # 120+
 #%%
 # Loop for each province -> then each tambon
 for p in list_p:
@@ -143,12 +144,14 @@ for p in list_p:
     df_temporal = extract_distribution_features(df_temporal, columns_s1, label="s1")
     df_temporal = extract_distribution_features(df_temporal, columns_s2, label="s2")
     df_temporal = extract_distribution_features(df_temporal, columns_s3, label="s3")
+    df_temporal = extract_distribution_features(df_temporal, columns_s4, label="s4")
     
     # Intensity
     df_temporal = extract_intensity_features(df_temporal, columns_all, label="wh_ssn")
     df_temporal = extract_intensity_features(df_temporal, columns_s1, label="s1")
     df_temporal = extract_intensity_features(df_temporal, columns_s2, label="s2")
     df_temporal = extract_intensity_features(df_temporal, columns_s3, label="s3")
+    df_temporal = extract_intensity_features(df_temporal, columns_s4, label="s4")
     
     # Save (groupby year)
     for year, df_temporal_grp in df_temporal.groupby("final_plant_year"):

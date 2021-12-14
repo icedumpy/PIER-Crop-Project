@@ -152,13 +152,14 @@ root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\SMAP_L4_smrootz
 root_df_temporal =  r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\SMAP_L4_smrootzone_temporal"
 list_p = np.unique([file.split(".")[0][-7:-5] for file in os.listdir(root_df_temporal)]).tolist()
 #%%
-columns_all = [f"t{i}" for i in range(181)]
+columns_all = [f"t{i}" for i in range(180)]
 columns_s1 = [f"t{i}" for i in range(0, 40)]
 columns_s2 = [f"t{i}" for i in range(40, 90)]
-columns_s3 = [f"t{i}" for i in range(90, 181)]
+columns_s3 = [f"t{i}" for i in range(90, 120)]
+columns_s4 = [f"t{i}" for i in range(120, 180)]
 #%%
 # Loop for each province -> then each tambon
-for p in list_p[1::2]:
+for p in list_p[0::2]:
     print(p)
     # if p == "30":
     #     break
@@ -172,12 +173,14 @@ for p in list_p[1::2]:
     df_temporal = extract_distribution_features(df_temporal, columns_s1, label="s1")
     df_temporal = extract_distribution_features(df_temporal, columns_s2, label="s2")
     df_temporal = extract_distribution_features(df_temporal, columns_s3, label="s3")
+    df_temporal = extract_distribution_features(df_temporal, columns_s4, label="s4")
     
     # Intensity
     df_temporal = extract_intensity_features(df_temporal, columns_all, label="wh_ssn")
     df_temporal = extract_intensity_features(df_temporal, columns_s1, label="s1")
     df_temporal = extract_intensity_features(df_temporal, columns_s2, label="s2")
     df_temporal = extract_intensity_features(df_temporal, columns_s3, label="s3")
+    df_temporal = extract_intensity_features(df_temporal, columns_s4, label="s4")
     
     for year, df_temporal_grp in df_temporal.groupby("final_plant_year"):
         if len(df_temporal_grp) == 0:
