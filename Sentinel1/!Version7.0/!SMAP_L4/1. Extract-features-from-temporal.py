@@ -89,7 +89,7 @@ def extract_intensity_features(df_temporal, columns, label):
         pctl_temporal = 100*df_temporal_tambon[columns].T.melt()["value"].rank(pct=True).values.reshape(df_temporal_tambon[columns].shape)
         # Under
         for pctl in [5, 10, 15, 20]:
-            arr = (pctl_temporal < pctl).astype("int") 
+            arr = (pctl_temporal < pctl).astype("int")
             # Strict
             list_consecutive_strict = []
             for i in range(arr.shape[0]):
@@ -159,7 +159,7 @@ columns_s3 = [f"t{i}" for i in range(90, 120)]
 columns_s4 = [f"t{i}" for i in range(120, 180)]
 #%%
 # Loop for each province -> then each tambon
-for p in list_p[0::2]:
+for p in list_p:
     print(p)
     # if p == "30":
     #     break
