@@ -166,6 +166,8 @@ makeCluster(
 ) 
 #%%
 df[f'cluster_label'] = output2 # copy the label into a Cluster_lable column
+df = df.drop(columns=["polygon", "center"])
+df.to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\cluster-level-features.parquet")
 #%%
 # =============================================================================
 # Explore The appropriate Cluster Level.
@@ -408,11 +410,6 @@ def extractSubCluster(df, df_clusters, level, max_level, based_value):
     df_out = df[df.cluster_label.isin(label_values)]
     return df_out
 #%%
-df.to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\cluster-level-features.parquet")
-#%%
-
-
-
 from sklearn.feature_selection import RFE # feature selection
 from sklearn.pipeline import Pipeline # link feature selector with classifier
 from sklearn.ensemble import RandomForestClassifier
