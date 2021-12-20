@@ -2,7 +2,11 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 #%%
-df = pd.read_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3.pkl")
+path = r"F:\CROP-PIER\CROP-WORK\batch_3c\df_pierxda_batch_3c_NE2.parquet"
+path_save = path.replace(".parquet", "_compressed.parquet")
+#%%
+df = pd.read_parquet(path)
+# df = pd.read_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3.pkl")
 #%%
 for i, (column, dtype) in enumerate(zip(df.columns, df.dtypes.astype(str).tolist())):
     if column == "ext_act_id":
@@ -16,10 +20,10 @@ for i, (column, dtype) in enumerate(zip(df.columns, df.dtypes.astype(str).tolist
     print()
 #%%
 df["y"] = df["y"].astype("uint8")
-df.to_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed.pkl")
+df.to_parquet(path_save)
 #%%
-df = pd.read_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3.pkl")
-df_compressed = pd.read_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed.pkl")
+df = pd.read_parquet(path)
+df_compressed = pd.read_parquet(path_save)
 #%%
 dict_error = dict()
 for column in df.columns:
