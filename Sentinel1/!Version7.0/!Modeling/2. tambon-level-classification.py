@@ -1,8 +1,10 @@
 import os
 import json
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from imblearn.over_sampling import SMOTE 
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
@@ -21,13 +23,35 @@ def p90(x):
 def p95(x):
     return x.quantile(0.95)
 
-def plot_report(list_dict_report, label=None):
-    df_report = make_report(list_dict_report)
-    fig, ax = plt.subplots(figsize=(16, 9))
-    df_report.plot.bar(rot=0, ax=ax)
-    ax.set_ylim(0, 1)
-    return fig, ax, df_report
+def compare_model(df_tambon_train, df_tambon_test, list_feature_combinations):
+    list_report = list()
+    for features in list_feature_combinations:
+        # Train and evaluate model
+        x_train, y_train = df_tambon_train[features].values, df_tambon_train["y"].values
+        x_test,  y_test  = df_tambon_test[features].values, df_tambon_test["y"].values
+        model_report = run_model(x_train, y_train, x_test, y_test, features)
+        # Append results to list
+        list_report.append(model_report)
+    return list_report
+
+def plot_report(df_report, criteria, title=None, xlabels=None):
+    # Make df_report easier to display
+    df_report = df_report.loc[[criteria]].T
+    if not xlabels is None:
+        df_report = df_report.assign(xlabels=xlabels)
+        df_report = df_report.set_index("xlabels")
+    df_report = df_report.sort_values(by=criteria, ascending=False)
     
+    # Plot
+    fig, ax = plt.subplots(figsize=(16, 9))
+    df_report.plot(kind="bar", rot=0, ax=ax)
+    if not title is None:
+        ax.set_title(title)
+    ax.set_ylim(0, 1)
+    ax.grid(color="black", linestyle="--", alpha=0.3)
+    ax.set_xlabel("")
+    return fig, ax
+
 def make_report(list_dict_report):
     list_df = []
     for dict_report in list_dict_report:
@@ -52,7 +76,7 @@ def show_dist(df_tambon, column):
 def run_model(x_train, y_train, x_test, y_test, features):
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ('rf', RandomForestClassifier(n_estimators=200, max_depth=10, criterion="gini", class_weight="balanced_subsample", n_jobs=-1))
+        ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", random_state=42, n_jobs=-1))
     ])
     pipeline.fit(x_train, y_train)
     
@@ -73,6 +97,34 @@ def run_model(x_train, y_train, x_test, y_test, features):
         "confustion_matrix": cnf_matrix
     }
     return dict_report
+
+def main_features_comparison(df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+                             folder_name, figure_name, report_name,
+                             figure_xlabels=None, figure_title=None):
+    # Make reports
+    list_dict_report = compare_model(df_tambon_train, df_tambon_test, list_feature_combinations)
+    df_report = make_report(list_dict_report)
+    
+    # Plot results
+    plt.close("all")
+    fig, ax = plot_report(
+        df_report, 
+        criteria=criteria,
+        title=figure_title,
+        xlabels=figure_xlabels
+    )
+    
+    # Save both figure and report
+    folder_save = os.path.join(root_save, folder_name)
+    os.makedirs(folder_save, exist_ok=True)
+    
+    # Save figure
+    fig.savefig(os.path.join(folder_save, figure_name), bbox_inches="tight")
+    
+    # Save Report
+    df_report.columns = pd.MultiIndex.from_tuples([(short, real) for short, real in zip(figure_xlabels, df_report.columns)])
+    df_report.to_csv(os.path.join(folder_save, report_name))    
+    return df_report
 #%%
 dict_agg_features = {
     "y":"max",
@@ -235,29 +287,23 @@ else:
     df_tambon = df_tambon.rename(columns={"y_max":"y"})
     df_tambon.to_parquet(path_df_tambon)
     del df
-# Visualize features distribution
-# columns = list(dict_agg_features.keys())[1:]
-# plt.close("all")
-# for column in columns:
-#     if "hls" in column:
-#         plt.figure()
-#         plt.title(column)
-#         sns.histplot(
-#             data=df_tambon, x=column, 
-#             hue="y", common_norm=False, stat="probability"
-#         )
 #%% Separate train test
 df_tambon_train = df_tambon[df_tambon["tambon_pcode"].isin(df_list_train)]
 df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
-#%% For down&up sampling
-#%% 
-main_features = []
+
+# Upsampling minority class (Only training data)
+columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
+df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
+#%%
+criteria = "f1_binary"
+list_report_main = []
 #%%
 # =============================================================================
-# Sharp drop OR Backgroud-BC
+# 1. Sharp drop OR Backgroud-BC
 # =============================================================================
-# Which feature? Which Percentile?
-list_features_set = [
+
+# Defind parameters
+list_feature_combinations = [
     ['x_s1_bc_drop_min_min'],
     ['x_s1_bc_drop_min_p5'],
     ['x_s1_bc_drop_min_p10'],
@@ -266,216 +312,141 @@ list_features_set = [
     ['x_s1_bc_background_bc_minus_bc_t_max_p75'],
     ['x_s1_bc_background_bc_minus_bc_t_max_p90'],
     ['x_s1_bc_background_bc_minus_bc_t_max_p95'],
+    ['x_s1_bc_drop_min_min', 'x_s1_bc_drop_min_p5', 
+     'x_s1_bc_drop_min_p10', 'x_s1_bc_drop_min_p25'
+    ],
+    ['x_s1_bc_background_bc_minus_bc_t_max_p75', 'x_s1_bc_background_bc_minus_bc_t_max_p95',
+     'x_s1_bc_background_bc_minus_bc_t_max_p95', 'x_s1_bc_background_bc_minus_bc_t_max_p95'
+    ]
 ]
-#%%
-def compare_model(df_tambon_train, df_tambon_test, list_features_set):
-    list_report = list()
-    for features in list_features_set:
-        # Train and evaluate model
-        x_train, y_train = df_tambon_train[features].values, df_tambon_train["y"].values
-        x_test, y_test   = df_tambon_test[features].values, df_tambon_test["y"].values
-        model_report = run_model(x_train, y_train, x_test, y_test, features)
-        
-        # Append results to list
-        list_report.append(model_report)
-    return list_report
-#%%
-list_report = compare_model(df_tambon_train, df_tambon_test, list_features_set)
-#%%
+figure_xlabels= [
+    "Drop_min", "Drop_p5", "Drop_p10", "Drop_p25",
+    "BG-BS_max", "BG-BS_p75", "BG-BS_p90", "BG-BS_p95",
+    "Drop(All)", "BG-BS(All)"
+]
+figure_title = "SharpDrop(Min) VS Background-BackScatter(Max)"
+folder_name = "1.SharpDrop_VS_Background-BackScatter"
 
-#%%
-plt.close("all")
-criteria = "f1_binary"
-dict_master_report = dict()
-dict_master_report["features"] = []
-dict_master_report["f1"] = []
+# RUNNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 
+features_drop = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_drop)
+#%% 
 # =============================================================================
-# Level 1: Sharp drop (pure sharp drop vs background minus backscatter)
-# "x_s1_bc_drop_min" vs "x_s1_bc_background_bc_minus_bc_t_max"
+# 2. Backscatter Level: Min (which combination?)
 # =============================================================================
-features_level_1_1 = ["x_s1_bc_drop_min"]
-features_level_1_2 = ["x_s1_bc_background_bc_minus_bc_t_max"]
+list_feature_combinations = [
+    ['x_s1_bc_bc(t)_min_min'],
+    ['x_s1_bc_bc(t)_min_p5'],
+    ['x_s1_bc_bc(t)_min_p10'],
+    ['x_s1_bc_bc(t)_min_p25'],
+    ['x_s1_bc_bc(t)_min_min', 'x_s1_bc_bc(t)_min_p5', 'x_s1_bc_bc(t)_min_p10', 'x_s1_bc_bc(t)_min_p25']
+]
+figure_xlabels = ["BS_Min", "BS_p5", "BS_p10", "BS_p25", "BS(All)"]
+figure_title = "BackScatter(Min)"
+folder_name = "2.BackScatter"
 
-x_train, y_train = df_tambon_train[features_level_1_1].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_1_1], df_tambon_test["y"]
-dict_level_1_1 = run_model(x_train, y_train, x_test, y_test, features_level_1_1)
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 
-x_train, y_train = df_tambon_train[features_level_1_2].values.reshape(-1, 1), df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_1_2].values.reshape(-1, 1), df_tambon_test["y"]
-dict_level_1_2 = run_model(x_train, y_train, x_test, y_test, features_level_1_2)
-
-# Make report and plot
-list_dict_report = [dict_level_1_1, dict_level_1_2]
-fig, ax, df_report = plot_report(list_dict_report)
-fig.savefig(os.path.join(root_save, "1.Level1-inner.png"), bbox_inches="tight")
-
-# Select winner from Level 1
-features_level_1 = [df_report.loc[criteria].idxmax()]
-print(f"Level 1 winner: {features_level_1}")
-dict_master_report["features"].append(features_level_1)
-dict_master_report["f1"].append(df_report.loc[criteria, features_level_1].values[0])
+features_bs_level = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_bs_level)
 #%%
 # =============================================================================
-# Level 2 & 3: Backscatter level vs Backscatter level + drop 
+# 3. Backscatter Level+Drop: Min (which combination?)
 # =============================================================================
-features_level_2_1 = ["x_s1_bc_bc(t)_min"]
-features_level_2_2 = ["x_s1_bc_drop+bc_min"]
+list_feature_combinations = [
+    ['x_s1_bc_drop+bc_min_min'],
+    ['x_s1_bc_drop+bc_min_p5'],
+    ['x_s1_bc_drop+bc_min_p10'],
+    ['x_s1_bc_drop+bc_min_p25'],
+    ['x_s1_bc_drop+bc_min_min', 'x_s1_bc_drop+bc_min_p5', 'x_s1_bc_drop+bc_min_p10', 'x_s1_bc_drop+bc_min_p25']
+]
+figure_xlabels = ["BS+Drop_Min", "BS+Drop_p5", "BS+Drop_p10", "BS+Drop_p25", "BS+Drop(All)"]
+figure_title = "BackScatter+Drop(Min)"
+folder_name = "3.BackScatter_Plus_Drop"
 
-x_train, y_train = df_tambon_train[features_level_2_1].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_2_1], df_tambon_test["y"]
-dict_level_2_1 = run_model(x_train, y_train, x_test, y_test, features_level_2_1)
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 
-x_train, y_train = df_tambon_train[features_level_2_2].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_2_2], df_tambon_test["y"]
-dict_level_2_2 = run_model(x_train, y_train, x_test, y_test, features_level_2_2)
-
-# Make report and plot
-list_dict_report = [dict_level_2_1, dict_level_2_2]
-fig, ax, df_report = plot_report(list_dict_report)
-fig.savefig(os.path.join(root_save, "2.Level2-inner.png"), bbox_inches="tight")
-
-# Select winner from Level 2
-features_level_2 = [df_report.loc[criteria].idxmax()]
-print(f"Level 2 winner: {features_level_2}")
-dict_master_report["features"].append(features_level_2)
-dict_master_report["f1"].append(df_report.loc[criteria, features_level_2].values[0])
+features_bs_plus_drop_level = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_bs_plus_drop_level)
 #%%
 # =============================================================================
-# Compare Level 1 only, Level 2 only, Level 1&2 
+# 4. Drop OR Backscatter level OR Drop|Backscatter Or Drop+Backscatter
 # =============================================================================
-x_train, y_train = df_tambon_train[features_level_1].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_1], df_tambon_test["y"]
-dict_level_1 = run_model(x_train, y_train, x_test, y_test, features_level_1)
+list_feature_combinations = [
+    features_drop,
+    features_bs_level,
+    features_bs_plus_drop_level,
+    features_drop+features_bs_level
+]
+figure_xlabels = ["Only Drop", "Only BS", "Drop+BS", "Drop & BS"]
+figure_title = "Drop VS BackScatter VS Drop+BackScatter VS Drop & Backscatter"
+folder_name = "4.Drop_and_BackScatter_combination"
 
-x_train, y_train = df_tambon_train[features_level_2].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_2], df_tambon_test["y"]
-dict_level_2 = run_model(x_train, y_train, x_test, y_test, features_level_2)
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 
-x_train, y_train = df_tambon_train[features_level_1+features_level_2].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_level_1+features_level_2], df_tambon_test["y"]
-dict_level_1_2 = run_model(x_train, y_train, x_test, y_test, features_level_1+features_level_2)
-
-# Make report and plot
-list_dict_report = [dict_level_1, dict_level_2, dict_level_1_2]
-fig, ax, df_report = plot_report(list_dict_report)
-fig.savefig(os.path.join(root_save, "3.Level1&2_comparison.png"), bbox_inches="tight")
-
-# Select winner from Level 1&2
-features_main = df_report.loc[criteria].idxmax().split("&")
-print(f"Level 1&2 winner: {features_main}")
-dict_master_report["features"].append(features_main)
-dict_master_report["f1"].append(df_report.loc[criteria, "&".join(features_main)])
+# Main features!!
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
 #%%
 # =============================================================================
-# Intensity S1 ("Threshold")
+# 5. Sentinel-1 Intensity (Select Threshold) 
 # =============================================================================
-list_dict_report = []
-for threshold in [-12, -13, -14, -15,- 16,- 17,- 18]:
-    features_intensity = [column for column in list(dict_agg_features.keys()) if f"x_s1_bc_v2_pct_of_plot_with_backscatter_under({threshold})" in column]
-    features = features_main+features_intensity
-    x_train, y_train = df_tambon_train[features].values, df_tambon_train["y"]
-    x_test, y_test   = df_tambon_test[features], df_tambon_test["y"]
-    list_dict_report.append(run_model(x_train, y_train, x_test, y_test, features))   
-# Make report and plot
-fig, ax, df_report = plot_report(list_dict_report)
-ax.legend(labels=[-12, -13, -14, -15,- 16,- 17,- 18])
-fig.savefig(os.path.join(root_save, "4.S1_intensity.png"), bbox_inches="tight")
+#%%
+list_feature_combinations = []
+for threshold in [-12, -13, -14, -15, -16, -17, -18]:
+   list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if f"backscatter_under({threshold})" in column])
+figure_xlabels = [f"BS_Under({threshold})" for threshold in [-12, -13, -14, -15, -16, -17, -18]]
+figure_title = "Sentinel-1 Intensity"
+folder_name = "5.Sentinel-1 Intensity"
 
-# Select winner from threshold
-features_main = df_report.loc[criteria].idxmax().split("&")
-print(f"S1 Intensity winner: {features_main}")
-dict_master_report["features"].append(features_main)
-dict_master_report["f1"].append(df_report.loc[criteria, "&".join(features_main)])
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 #%%
 # =============================================================================
-# Intensity GISTDA ("Normal" or "Relax")
+# 5.1 After getting Threshold -> Which rank?
 # =============================================================================
-list_normal = ["x_gistda_flood_ratio_0", "x_gistda_flood_ratio_1-5", "x_gistda_flood_ratio_6-10", "x_gistda_flood_ratio_11-15", "x_gistda_flood_ratio_15+"]
-list_relax = ["x_gistda_flood_ratio_relax_0", "x_gistda_flood_ratio_relax_1-5", "x_gistda_flood_ratio_relax_6-10", "x_gistda_flood_ratio_relax_11-15", "x_gistda_flood_ratio_relax_15+"]
-list_dict_report = []
-for features in [list_normal, list_relax]:
-    features = features_main+features
-    x_train, y_train = df_tambon_train[features].values, df_tambon_train["y"]
-    x_test, y_test   = df_tambon_test[features], df_tambon_test["y"]
-    list_dict_report.append(run_model(x_train, y_train, x_test, y_test, features))
-# Make report and plot
-fig, ax, df_report = plot_report(list_dict_report)
-ax.legend(labels=["GISTDA_Normal", "GISTDA_Relax"])
-fig.savefig(os.path.join(root_save, "5.GISTDA_intensity.png"), bbox_inches="tight")
-
-# Select winner from Level 1&2
-features_main = df_report.loc[criteria].idxmax().split("&")
-print(f"GISTDA Intensity winner: {features_main}")
-dict_master_report["features"].append(features_main)
-dict_master_report["f1"].append(df_report.loc[criteria, "&".join(features_main)])
-#%%
-# =============================================================================
-# Rainfall ??
-# =============================================================================
-# "x_gsmap_rain_ph1_CR"
-# "x_gsmap_rain_ph2_CR"
-# "x_gsmap_rain_ph3_CR"
-# "x_gsmap_rain_ph4_CR"
-# "x_gsmap_rain_ph4a_CR"
-# "x_gsmap_rain_ph4b_CR"
-# "x_gsmap_rain_wh_ssn_CR"
-# "x_gsmap_rain_0_105_CR"
-# "x_gsmap_rain_106_120_CR"
-# "x_gsmap_rain_ph1_CWD"
-# "x_gsmap_rain_ph2_CWD"
-# "x_gsmap_rain_ph3_CWD"
-# "x_gsmap_rain_ph4_CWD"
-# "x_gsmap_rain_ph4a_CWD"
-# "x_gsmap_rain_ph4b_CWD"
-# "x_gsmap_rain_wh_ssn_CWD"
-# "x_gsmap_rain_0_105_CWD"
-# "x_gsmap_rain_106_120_CWD"
-#%%
-# =============================================================================
-# Soil moisture (Level)
-# =============================================================================
-features_1 = features_main+["x_smap_soil_moist_max_sm"]
-features_2 = features_main+["x_smap_soil_moist_pctl_max_sm"]
-
-x_train, y_train = df_tambon_train[features_1].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_1], df_tambon_test["y"]
-dict_level_1 = run_model(x_train, y_train, x_test, y_test, features_1)
-
-x_train, y_train = df_tambon_train[features_2].values, df_tambon_train["y"]
-x_test, y_test = df_tambon_test[features_2], df_tambon_test["y"]
-dict_level_2 = run_model(x_train, y_train, x_test, y_test, features_2)
-
-# Make report and plot
-list_dict_report = [dict_level_1, dict_level_2]
-fig, ax, df_report = plot_report(list_dict_report)
-ax.legend(labels=["Max", "Percentile (Max)"])
-fig.savefig(os.path.join(root_save, "7.SoilMoisture_level.png"), bbox_inches="tight")
-
-# Select winner from Level 2
-features_main = df_report.loc[criteria].idxmax().split("&")
-print(f"Soil moisture level winner: {features}")
-dict_master_report["features"].append(features_main)
-dict_master_report["f1"].append(df_report.loc[criteria, "&".join(features_main)])
-#%%
-
-
-# =============================================================================
-# Soil moisture (Intensity)
-# =============================================================================
-
-"x_smap_soil_moist_v2_cnsct_period_above_80_strict"
-"x_smap_soil_moist_v2_cnsct_period_above_80_relax"
-"x_smap_soil_moist_v2_cnsct_period_above_85_strict"
-"x_smap_soil_moist_v2_cnsct_period_above_85_relax"
-"x_smap_soil_moist_v2_cnsct_period_above_90_strict"
-"x_smap_soil_moist_v2_cnsct_period_above_90_relax"
-"x_smap_soil_moist_v2_cnsct_period_above_95_strict"
-"x_smap_soil_moist_v2_cnsct_period_above_95_relax"
+list_feature_combinations = []
+threshold = int(df_report.loc[criteria].idxmax()[1].split("&")[-1].split("under(")[1][:3]) # Get threshold from string
+for rank in ["max", "p75", "p90", "p95"]:
+   list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"_{rank}" in column) and ("backscatter_under" in column)])
+  
 
 #%%
-df_master_report = pd.DataFrame(dict_master_report)
-df_master_report.to_csv(r"F:\CROP-PIER\CROP-WORK\Presentation\20211220\report.csv", index=False)
+# Main features from Sentinel-1 
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+# To be continued ??!! 
 
 
 
@@ -500,14 +471,4 @@ df_master_report.to_csv(r"F:\CROP-PIER\CROP-WORK\Presentation\20211220\report.cs
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+#%%
