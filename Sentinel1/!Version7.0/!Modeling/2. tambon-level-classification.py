@@ -439,7 +439,8 @@ list_feature_combinations = []
 threshold = int(df_report.loc[criteria].idxmax()[1].split("&")[-1].split("under(")[1][:3]) # Get threshold from string
 for rank in ["max", "p75", "p90", "p95"]:
    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"_{rank}" in column) and ("backscatter_under" in column)])
-  
+#%%
+list_feature_combinations
 
 #%%
 # Main features from Sentinel-1 
