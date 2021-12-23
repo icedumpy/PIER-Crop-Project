@@ -414,15 +414,15 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 5. Sentinel-1 Intensity (Select Threshold) 
+# 5.1 Sentinel-1 Intensity (Select Threshold) 
 # =============================================================================
 #%%
 list_feature_combinations = []
 for threshold in [-12, -13, -14, -15, -16, -17, -18]:
    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if f"backscatter_under({threshold})" in column])
 figure_xlabels = [f"BS_Under({threshold})" for threshold in [-12, -13, -14, -15, -16, -17, -18]]
-figure_title = "Sentinel-1 Intensity"
-folder_name = "5.Sentinel-1 Intensity"
+figure_title = "Sentinel-1 Intensity (Threshold)"
+folder_name = "5.1.Sentinel-1 Intensity (Threshold)"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -433,43 +433,120 @@ df_report = main_features_comparison(
 list_report_main.append(df_report)
 #%%
 # =============================================================================
-# 5.1 After getting Threshold -> Which rank?
+# 5.2 After getting Threshold -> Which rank?
 # =============================================================================
 list_feature_combinations = []
 threshold = int(df_report.loc[criteria].idxmax()[1].split("&")[-1].split("under(")[1][:3]) # Get threshold from string
 for rank in ["max", "p75", "p90", "p95"]:
-   list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"_{rank}" in column) and ("backscatter_under" in column)])
-#%%
-list_feature_combinations
+   list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"_{rank}" in column) and (f"backscatter_under({threshold})" in column)])
+list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if f"backscatter_under({threshold})" in column])
 
-#%%
+figure_xlabels = [f"BS_Under({threshold})_{rank}" for rank in ["max", "p75", "p90", "95", "All"]]
+figure_title = "Sentinel-1 Intensity (Rank)"
+folder_name = "5.2.Sentinel-1 Intensity (Rank)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+
 # Main features from Sentinel-1 
 features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
-# To be continued ??!! 
+# =============================================================================
+# 6.1 GISTDA Flood (Normal Or Relax)
+# =============================================================================
+list_feature_combinations = [
+    features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column)],
+    features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and ("relax" in column)],
+]
 
+figure_xlabels = ["GISTDA (Strict)", "GISTDA (Relax)"]
+figure_title = "GISTDA Strict VS Relax"
+folder_name = "6.1 GISTDA Strict VS Relax"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
 #%%
+# =============================================================================
+# 6.2 GISTDA Flood -> Which rank?
+# =============================================================================
+list_feature_combinations = []
+strict_or_relax = "Relax" if "Relax" in df_report.loc[criteria].idxmax()[0] else "Strict"
+for rank in ["max", "p75", "p90", "p95"]:
+    if strict_or_relax == "Relax":
+        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and ("relax" in column) and (column.endswith(rank))])
+    else:
+        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column) and (column.endswith(rank))])
+list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column)])
+
+figure_xlabels = [f"GISTDA({strict_or_relax})_{rank}" for rank in ["max", "p75", "p90", "95", "All"]]
+figure_title = "GISTDA Strict VS Relax"
+folder_name = "6.1 GISTDA Strict VS Relax"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+
+# Main features from Sentinel-1 
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+# =============================================================================
+# 7. Rainfall
+# =============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
