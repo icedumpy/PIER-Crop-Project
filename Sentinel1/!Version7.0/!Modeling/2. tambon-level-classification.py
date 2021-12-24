@@ -1,5 +1,5 @@
 import os
-import json
+import re
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -200,7 +200,7 @@ dict_agg_features = {
     "x_gistda_flood_ratio_relax_6-10":["max", p75, p90, p95],
     "x_gistda_flood_ratio_relax_11-15":["max", p75, p90, p95],
     "x_gistda_flood_ratio_relax_15+":["max", p75, p90, p95],
-    # Rainfall
+    # GSMap Rainfall
     "x_gsmap_rain_ph1_CR":["max", p75, p90, p95],
     "x_gsmap_rain_ph2_CR":["max", p75, p90, p95],
     "x_gsmap_rain_ph3_CR":["max", p75, p90, p95],
@@ -219,6 +219,12 @@ dict_agg_features = {
     "x_gsmap_rain_wh_ssn_CWD":["max", p75, p90, p95],
     "x_gsmap_rain_0_105_CWD":["max", p75, p90, p95],
     "x_gsmap_rain_106_120_CWD":["max", p75, p90, p95],
+    # NECTEC Rain fall
+    "x_nectec_rain_ph1_mean_rainfall":["max", p75, p90, p95],
+    "x_nectec_rain_ph2_mean_rainfall":["max", p75, p90, p95],
+    "x_nectec_rain_ph3_mean_rainfall":["max", p75, p90, p95],
+    "x_nectec_rain_ph4_mean_rainfall":["max", p75, p90, p95],
+    "x_nectec_rain_wh_ssn_mean_rainfall":["max", p75, p90, p95],
     # Soil Moisture
     "x_smap_soil_moist_max_sm":["max", p75, p90, p95],
     "x_smap_soil_moist_pctl_max_sm":["max", p75, p90, p95],
@@ -453,7 +459,7 @@ df_report = main_features_comparison(
 )
 list_report_main.append(df_report)
 
-# Main features from Sentinel-1 
+# Main features
 features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
@@ -467,7 +473,7 @@ list_feature_combinations = [
 
 figure_xlabels = ["GISTDA (Strict)", "GISTDA (Relax)"]
 figure_title = "GISTDA Strict VS Relax"
-folder_name = "6.1 GISTDA Strict VS Relax"
+folder_name = "6.1.GISTDA Strict VS Relax"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -490,8 +496,8 @@ for rank in ["max", "p75", "p90", "p95"]:
 list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column)])
 
 figure_xlabels = [f"GISTDA({strict_or_relax})_{rank}" for rank in ["max", "p75", "p90", "95", "All"]]
-figure_title = "GISTDA Strict VS Relax"
-folder_name = "6.1 GISTDA Strict VS Relax"
+figure_title = "GISTDA (Rank)"
+folder_name = "6.2.GISTDA (Rank)"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -501,46 +507,119 @@ df_report = main_features_comparison(
 )
 list_report_main.append(df_report)
 
-# Main features from Sentinel-1 
+# Main features
 features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 7. Rainfall
+# 7.1 Rainfall GSMap (CR OR CWD)
 # =============================================================================
+list_feature_combinations = [
+    features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_CR" in column],
+    features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_CWD" in column],
+    features_main+[column for column in df_tambon.columns.tolist() if re.match(r"x_gsmap_rain_ph[0-9]+_CR", column)],
+    features_main+[column for column in df_tambon.columns.tolist() if re.match(r"x_gsmap_rain_ph[0-9]+_CWD", column)]
+]
+
+figure_xlabels = ["CR Whole season", "CWD Whole season", "CR Growth stage", "CWD Growth stage"]
+figure_title = "GSMap (Whole season VS Growth Stage)"
+folder_name = "7.1.GSMap (Whole season VS Growth Stage)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+#%%
+# =============================================================================
+# 7.2 Rainfall GSMap (Which rank?)
+# =============================================================================
+list_feature_combinations = []
+features_temp = [feature for feature in df_report.loc[criteria].idxmax()[1].split("&") if not feature in features_main]
+for rank in ["max", "p75", "p90", "p95"]:
+    list_feature_combinations.append(features_main+[feature for feature in features_temp if rank in feature])
+list_feature_combinations.append(features_main + features_temp)
+
+figure_xlabels = [f"GSMap_{df_report.loc[criteria].idxmax()[0].replace(' ', '_')}_{rank}" for rank in ["max", "p75", "p90", "95", "All"]]
+figure_title = "GSMap (Rank)"
+folder_name = "7.2.GSMap (Rank)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+# =============================================================================
+# 8.1 Rainfall NECTEC (Whole season VS Growth stage)
+# =============================================================================
+list_feature_combinations = [
+    features_main+[column for column in df_tambon.columns.tolist() if "x_nectec_rain_ph" in column],
+    features_main+[column for column in df_tambon.columns.tolist() if "x_nectec_rain_wh" in column]
+]
+
+figure_xlabels = ["NECTEC (Growth stage)", "NECTEC (Whole season)"]
+figure_title = "NECTEC Rainfall"
+folder_name = "8.1.NECTEC Rainfall"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+#%%
+# =============================================================================
+# 8.1 Rainfall NECTEC Rank)
+# =============================================================================
+list_feature_combinations = []
+features_temp = [feature for feature in df_report.loc[criteria].idxmax()[1].split("&") if not feature in features_main]
+for rank in ["max", "p75", "p90", "p95"]:
+    list_feature_combinations.append(features_main+[feature for feature in features_temp if rank in feature])
+list_feature_combinations.append(features_main + features_temp)
+
+figure_xlabels = [f"{df_report.loc[criteria].idxmax()[0].replace(' ', '_')}_{rank}" for rank in ["max", "p75", "p90", "95", "All"]]
+figure_title = "NECTEC (Rank)"
+folder_name = "8.2.NECTEC (Rank)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title
+)
+list_report_main.append(df_report)
+
+# Main features 
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+# =============================================================================
+# 9.Soil moisture (Level)
+# =============================================================================
+list_feature_combinations = []
+
+
+"x_smap_soil_moist_max_sm":["max", p75, p90, p95],
+"x_smap_soil_moist_pctl_max_sm":["max", p75, p90, p95],
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#%%
+# =============================================================================
+# 10. Soil moisture (Intensity)
+# =============================================================================
 
 
 
