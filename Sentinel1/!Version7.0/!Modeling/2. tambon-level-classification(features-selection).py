@@ -351,12 +351,31 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
+# =============================================================================
+# All features
+# =============================================================================
+
+# Get data
 x_train, y_train = df_tambon_train[columns_training_feature].values, df_tambon_train["y"].values
 x_test,  y_test  = df_tambon_test[columns_training_feature].values, df_tambon_test["y"].values
-#%%
 scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
+
+# Train model
+model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
+model.fit(x_train, y_train)
+
+# Result
+fig, ax = plt.subplots()
+plot_roc_curve(model, x_train, y_train, label="Train", color="g-", ax=ax)
+plot_roc_curve(model, x_test, y_test, label="Test", color="r--", ax=ax)
+ax.legend()
+print(classification_report(y_test, model.predict(x_test)))
+fig.savefig(os.path.join(root_save, "ROC_all_features.png"), bbox_inches="tight")
+#%%
+x_train, y_train = df_tambon_train[columns_training_feature].values, df_tambon_train["y"].values
+x_test,  y_test  = df_tambon_test[columns_training_feature].values, df_tambon_test["y"].values
 #%%
 model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
 selector = SelectFromModel(estimator=model, max_features=50)
@@ -364,8 +383,15 @@ selector = selector.fit(x_train, y_train)
 list_sel_feature_mask = selector.get_support()
 list_sel_feature_names = np.array(columns_training_feature)[list_sel_feature_mask].tolist()
 #%%
+x_train, y_train = df_tambon_train[list_sel_feature_names].values, df_tambon_train["y"].values
+x_test,  y_test  = df_tambon_test[list_sel_feature_names].values, df_tambon_test["y"].values
+scaler = StandardScaler()
+x_train = scaler.fit_transform(x_train)
+x_test = scaler.transform(x_test)
 model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
-
+model.fit(x_train, y_train)
+f1_score(y_test, model.predict(x_test))
+#%%
 
 
 
