@@ -378,7 +378,7 @@ x_train, y_train = df_tambon_train[columns_training_feature].values, df_tambon_t
 x_test,  y_test  = df_tambon_test[columns_training_feature].values, df_tambon_test["y"].values
 #%%
 model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
-selector = SelectFromModel(estimator=model, max_features=50)
+selector = SelectFromModel(estimator=model, max_features=30)
 selector = selector.fit(x_train, y_train)
 list_sel_feature_mask = selector.get_support()
 list_sel_feature_names = np.array(columns_training_feature)[list_sel_feature_mask].tolist()
@@ -390,7 +390,13 @@ x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
 model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
 model.fit(x_train, y_train)
-f1_score(y_test, model.predict(x_test))
+# Result
+fig, ax = plt.subplots()
+plot_roc_curve(model, x_train, y_train, label="Train", color="g-", ax=ax)
+plot_roc_curve(model, x_test, y_test, label="Test", color="r--", ax=ax)
+ax.legend()
+print(classification_report(y_test, model.predict(x_test)))
+fig.savefig(os.path.join(root_save, "ROC_top_30.png"), bbox_inches="tight")
 #%%
 
 

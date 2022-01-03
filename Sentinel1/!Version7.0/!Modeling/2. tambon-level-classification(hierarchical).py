@@ -201,7 +201,7 @@ dict_agg_features = {
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_13-18_days_relax":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_19+_days_relax":["max", p75, p90, p95],
     # GISTDA Flood
-    # "x_gistda_flood_ratio_0":["max", p75, p90, p95], # Check ?
+    # "x_gistda_flood_ratio_0":["max", p75, p90, p95], #?
     "x_gistda_flood_ratio_1-5":["max", p75, p90, p95],
     "x_gistda_flood_ratio_6-10":["max", p75, p90, p95],
     "x_gistda_flood_ratio_11-15":["max", p75, p90, p95],
@@ -350,7 +350,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 20
+n_trials = 2
 criteria = "f1"
 list_report_main = []
 #%%
@@ -704,35 +704,62 @@ list_report_main.append(df_report)
 features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
+# =============================================================================
+# Another main topic NDVI (Best of MODIS vs Best of HLS)
+# =============================================================================
 #%%
-x_train, y_train = df_tambon_train[features_main].values, df_tambon_train["y"].values
-x_test,  y_test  = df_tambon_test[features_main].values, df_tambon_test["y"].values
-
-pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
-])
-pipeline.fit(x_train, y_train)
-
-# Get predicted
-y_test_pred  = pipeline.predict(x_test)
-
-# Calculate score
-f1 = f1_score(y_test, y_test_pred)
-
-# Confusion matrix
-cnf_matrix = confusion_matrix(y_test, y_test_pred)
+# =============================================================================
+# 10.1.HLS NDVI (Level)
+# =============================================================================
+get_combinations([column for column in df_tambon.columns.tolist() if ('x_hls_ndvi' in column) and (not "cnsct" in column)])
 #%%
-plt.close("all")
-fig, ax = plt.subplots()
-plot_roc_curve(pipeline, x_train, y_train, label="Train", color="g-", ax=ax)
-plot_roc_curve(pipeline, x_test, y_test, label="Test", color="r--", ax=ax)
-ax.legend()
-ax.set_title(f"Training samples: {len(x_train)}, Test samples: {len(x_test)}")
-fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
 
-plt.close("all")
-fig, ax = plt.subplots()
-plot_confusion_matrix(pipeline, x_test, y_test, ax=ax)
-ax.set_title("Confusion Matrix (Test)")
-fig.savefig(os.path.join(root_save, "confusion_matrix.png"), bbox_inches="tight")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#%%
+#%%
+# x_train, y_train = df_tambon_train[features_main].values, df_tambon_train["y"].values
+# x_test,  y_test  = df_tambon_test[features_main].values, df_tambon_test["y"].values
+
+# pipeline = Pipeline([
+#     ("scaler", StandardScaler()),
+#     ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
+# ])
+# pipeline.fit(x_train, y_train)
+
+# # Get predicted
+# y_test_pred  = pipeline.predict(x_test)
+
+# # Calculate score
+# f1 = f1_score(y_test, y_test_pred)
+
+# # Confusion matrix
+# cnf_matrix = confusion_matrix(y_test, y_test_pred)
+# #%%
+# plt.close("all")
+# fig, ax = plt.subplots()
+# plot_roc_curve(pipeline, x_train, y_train, label="Train", color="g-", ax=ax)
+# plot_roc_curve(pipeline, x_test, y_test, label="Test", color="r--", ax=ax)
+# ax.legend()
+# ax.set_title(f"Training samples: {len(x_train)}, Test samples: {len(x_test)}")
+# fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
+
+# plt.close("all")
+# fig, ax = plt.subplots()
+# plot_confusion_matrix(pipeline, x_test, y_test, ax=ax)
+# ax.set_title("Confusion Matrix (Test)")
+# fig.savefig(os.path.join(root_save, "confusion_matrix.png"), bbox_inches="tight")
