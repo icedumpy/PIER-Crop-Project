@@ -711,24 +711,37 @@ print(features_main)
 # =============================================================================
 # 10.1.HLS NDVI (Level)
 # =============================================================================
-get_combinations([column for column in df_tambon.columns.tolist() if ('x_hls_ndvi' in column) and (not "cnsct" in column)])
+list_feature_combinations = get_combinations(['x_hls_ndvi_v2_min_whssn_min', 'x_hls_ndvi_v2_min_whssn_p5', 'x_hls_ndvi_v2_min_whssn_p10', 'x_hls_ndvi_v2_min_whssn_p25']) + get_combinations(['x_hls_ndvi_v2_pctl_min_whssn_min', 'x_hls_ndvi_v2_pctl_min_whssn_p5', 'x_hls_ndvi_v2_pctl_min_whssn_p10', 'x_hls_ndvi_v2_pctl_min_whssn_p25'])
+figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
+figure_title = "HLS NDVI"
+folder_name = "10.1.HLS NDVI (Level)"
+
+# Add Main features
+list_feature_combinations = [features_main+features for features in list_feature_combinations]
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main_hls = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_hls)
 #%%
+# =============================================================================
+# 10.2.HLS NDVI (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for pctl in [5, 10, 15, 20]:
+    for strict_or_relax in ["strict", "relax"]:
+        list_feature_combinations.append(features_main_hls+[column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
+        figure_xlabels.append(f"{pctl}_{strict_or_relax}")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[column for column in df_tambon.columns.tolist() if ('x_modis_ndvi_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)]
 
 #%%
 #%%
