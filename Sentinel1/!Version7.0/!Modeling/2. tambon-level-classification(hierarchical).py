@@ -256,17 +256,29 @@ dict_agg_features = {
     "x_smap_soil_moist_v2_cnsct_period_above_90_relax":["max", p75, p90, p95],
     "x_smap_soil_moist_v2_cnsct_period_above_95_strict":["max", p75, p90, p95],
     "x_smap_soil_moist_v2_cnsct_period_above_95_relax":["max", p75, p90, p95],
-    # NDVI
+    # HLS NDVI
+    "x_hls_ndvi_v2_max_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_whssn":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_whssn":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_whssn":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_max_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_stg2to3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_stg2to3":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_stg2to3":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_max_stg1":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_stg1":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_stg1":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_stg1":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_max_stg2":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_stg2":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_stg2":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_stg2":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_max_stg3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_stg3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_stg3":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_stg3":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_max_stg4":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_pctl_max_stg4":["max", p75, p90, p95],
     "x_hls_ndvi_v2_min_stg4":["min", p5, p10, p25],
     "x_hls_ndvi_v2_pctl_min_stg4":["min", p5, p10, p25],
     "x_hls_ndvi_v2_cnsct_period_under_5_strict_whssn":["max", p75, p90, p95],
@@ -277,6 +289,14 @@ dict_agg_features = {
     "x_hls_ndvi_v2_cnsct_period_under_15_relax_whssn":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_20_strict_whssn":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_20_relax_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_80_strict_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_80_relax_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_85_strict_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_85_relax_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_90_strict_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_90_relax_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_95_strict_whssn":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_95_relax_whssn":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_5_strict_stg2to3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_5_relax_stg2to3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_10_strict_stg2to3":["max", p75, p90, p95],
@@ -285,17 +305,37 @@ dict_agg_features = {
     "x_hls_ndvi_v2_cnsct_period_under_15_relax_stg2to3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_20_strict_stg2to3":["max", p75, p90, p95],
     "x_hls_ndvi_v2_cnsct_period_under_20_relax_stg2to3":["max", p75, p90, p95],
-    # MODIS
+    "x_hls_ndvi_v2_cnsct_period_above_80_strict_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_80_relax_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_85_strict_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_85_relax_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_90_strict_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_90_relax_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_95_strict_stg2to3":["max", p75, p90, p95],
+    "x_hls_ndvi_v2_cnsct_period_above_95_relax_stg2to3":["max", p75, p90, p95],
+    # MODIS NDVI
+    "x_modis_ndvi_max_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_whssn":["max", p75, p90, p95],
     "x_modis_ndvi_min_whssn":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_whssn":["min", p5, p10, p25],
+    "x_modis_ndvi_max_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_stg2to3":["max", p75, p90, p95],
     "x_modis_ndvi_min_stg2to3":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_stg2to3":["min", p5, p10, p25],
+    "x_modis_ndvi_max_stg1":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_stg1":["max", p75, p90, p95],
     "x_modis_ndvi_min_stg1":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_stg1":["min", p5, p10, p25],
+    "x_modis_ndvi_max_stg2":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_stg2":["max", p75, p90, p95],
     "x_modis_ndvi_min_stg2":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_stg2":["min", p5, p10, p25],
+    "x_modis_ndvi_max_stg3":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_stg3":["max", p75, p90, p95],
     "x_modis_ndvi_min_stg3":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_stg3":["min", p5, p10, p25],
+    "x_modis_ndvi_max_stg4":["max", p75, p90, p95],
+    "x_modis_ndvi_pctl_max_stg4":["max", p75, p90, p95],
     "x_modis_ndvi_min_stg4":["min", p5, p10, p25],
     "x_modis_ndvi_pctl_min_stg4":["min", p5, p10, p25],
     "x_modis_ndvi_cnsct_period_under_5_strict_whssn":["max", p75, p90, p95],
@@ -306,6 +346,14 @@ dict_agg_features = {
     "x_modis_ndvi_cnsct_period_under_15_relax_whssn":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_20_strict_whssn":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_20_relax_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_80_strict_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_80_relax_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_85_strict_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_85_relax_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_90_strict_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_90_relax_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_95_strict_whssn":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_95_relax_whssn":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_5_strict_stg2to3":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_5_relax_stg2to3":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_10_strict_stg2to3":["max", p75, p90, p95],
@@ -313,7 +361,15 @@ dict_agg_features = {
     "x_modis_ndvi_cnsct_period_under_15_strict_stg2to3":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_15_relax_stg2to3":["max", p75, p90, p95],
     "x_modis_ndvi_cnsct_period_under_20_strict_stg2to3":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_20_relax_stg2to3":["max", p75, p90, p95]
+    "x_modis_ndvi_cnsct_period_under_20_relax_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_80_strict_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_80_relax_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_85_strict_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_85_relax_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_90_strict_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_90_relax_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_95_strict_stg2to3":["max", p75, p90, p95],
+    "x_modis_ndvi_cnsct_period_above_95_relax_stg2to3":["max", p75, p90, p95]
 }
 #%%
 # Save folder
@@ -734,14 +790,17 @@ print(features_main_hls)
 # =============================================================================
 # 10.2.HLS NDVI (Intensity)
 # =============================================================================
+#%%
 list_feature_combinations = []
 figure_xlabels = []
+
 for pctl in [5, 10, 15, 20]:
     for strict_or_relax in ["strict", "relax"]:
-        list_feature_combinations.append(features_main_hls+[column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
+        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ('x_hls_ndvi_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
         figure_xlabels.append(f"{pctl}_{strict_or_relax}")
 
-[column for column in df_tambon.columns.tolist() if ('x_modis_ndvi_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)]
+
+# [column for column in df_tambon.columns.tolist() if ('x_hls_ndvi_v2_cnsct_period' in column) and (f"_{pctl}_" in column)]
 
 #%%
 #%%
