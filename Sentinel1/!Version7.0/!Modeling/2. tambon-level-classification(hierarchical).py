@@ -406,7 +406,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 2
+n_trials = 10
 criteria = "f1"
 list_report_main = []
 #%%
