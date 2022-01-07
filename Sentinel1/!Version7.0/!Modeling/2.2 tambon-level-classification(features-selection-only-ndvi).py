@@ -112,13 +112,6 @@ def main_features_comparison(df_tambon_train, df_tambon_test, list_feature_combi
     df_report.columns = pd.MultiIndex.from_tuples([(short, real) for short, real in zip(figure_xlabels, df_report.columns)])
     df_report.to_csv(os.path.join(folder_save, report_name))    
     return df_report
-
-
-def get_combinations(features):
-    list_feature_combinations = []
-    for i in range(1, len(features)+1):
-        list_feature_combinations+=list(map(list, list(combinations(features, i))))
-    return list_feature_combinations
 #%%
 # Save folder
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20211220"
@@ -379,6 +372,89 @@ list_report_main.append(df_report)
 # Main features
 features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main_modis)
+#%%
+list_feature_combinations = [
+    ['x_modis_ndvi_cnsct_period_under_5_strict_whssn_max', 'x_modis_ndvi_cnsct_period_under_5_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_under_5_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_under_5_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_10_strict_whssn_max', 'x_modis_ndvi_cnsct_period_under_10_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_under_10_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_under_10_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_15_strict_whssn_max', 'x_modis_ndvi_cnsct_period_under_15_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_under_15_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_under_15_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_20_strict_whssn_max', 'x_modis_ndvi_cnsct_period_under_20_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_under_20_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_under_20_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_80_strict_whssn_max', 'x_modis_ndvi_cnsct_period_above_80_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_above_80_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_above_80_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_85_strict_whssn_max', 'x_modis_ndvi_cnsct_period_above_85_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_above_85_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_above_85_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_90_strict_whssn_max', 'x_modis_ndvi_cnsct_period_above_90_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_above_90_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_above_90_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_95_strict_whssn_max', 'x_modis_ndvi_cnsct_period_above_95_strict_whssn_p75', 'x_modis_ndvi_cnsct_period_above_95_strict_whssn_p90', 'x_modis_ndvi_cnsct_period_above_95_strict_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_5_relax_whssn_max', 'x_modis_ndvi_cnsct_period_under_5_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_under_5_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_under_5_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_10_relax_whssn_max', 'x_modis_ndvi_cnsct_period_under_10_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_under_10_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_under_10_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_15_relax_whssn_max', 'x_modis_ndvi_cnsct_period_under_15_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_under_15_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_under_15_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_20_relax_whssn_max', 'x_modis_ndvi_cnsct_period_under_20_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_under_20_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_under_20_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_80_relax_whssn_max', 'x_modis_ndvi_cnsct_period_above_80_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_above_80_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_above_80_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_85_relax_whssn_max', 'x_modis_ndvi_cnsct_period_above_85_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_above_85_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_above_85_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_90_relax_whssn_max', 'x_modis_ndvi_cnsct_period_above_90_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_above_90_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_above_90_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_above_95_relax_whssn_max', 'x_modis_ndvi_cnsct_period_above_95_relax_whssn_p75', 'x_modis_ndvi_cnsct_period_above_95_relax_whssn_p90', 'x_modis_ndvi_cnsct_period_above_95_relax_whssn_p95'],
+    ['x_modis_ndvi_cnsct_period_under_5_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_5_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_5_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_5_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_10_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_10_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_10_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_10_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_15_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_15_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_15_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_15_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_20_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_20_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_20_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_20_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_80_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_80_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_80_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_80_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_85_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_85_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_85_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_85_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_90_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_90_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_90_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_90_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_95_strict_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_95_strict_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_95_strict_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_95_strict_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_5_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_5_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_5_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_5_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_10_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_10_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_10_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_10_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_15_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_15_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_15_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_15_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_under_20_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_under_20_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_under_20_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_under_20_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_80_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_80_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_80_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_80_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_85_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_85_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_85_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_85_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_90_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_90_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_90_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_90_relax_stg2to3_p95'],
+    ['x_modis_ndvi_cnsct_period_above_95_relax_stg2to3_max', 'x_modis_ndvi_cnsct_period_above_95_relax_stg2to3_p75', 'x_modis_ndvi_cnsct_period_above_95_relax_stg2to3_p90', 'x_modis_ndvi_cnsct_period_above_95_relax_stg2to3_p95'],
+]
+
+figure_xlabels = [
+    "5_s_wh", "10_s_wh", "15_s_wh", "20_s_wh", "80_s_wh", "85_s_wh", "90_s_wh", "95_s_wh",
+    "5_r_wh", "10_r_wh", "15_r_wh", "20_r_wh", "80_r_wh", "85_r_wh", "90_r_wh", "95_r_wh",
+    "5_s_2-3", "10_s_2-3", "15_s_2-3", "20_s_2-3", "80_s_2-3", "85_s_2-3", "90_s_2-3", "95_s_2-3",
+    "5_r_2-3", "10_r_2-3", "15_r_2-3", "20_r_2-3", "80_r_2-3", "85_r_2-3", "90_r_2-3", "95_r_2-3",
+]
+figure_title = "Modis NDVI"
+folder_name = "11.2.Modis NDVI (Intensity)"
+
+# Add Main features
+list_feature_combinations = [features_main_modis+features for features in list_feature_combinations]
+
+# RUNNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_modis)
+#%%
+# =============================================================================
+# Best of HLS vs Best of Modis
+# =============================================================================
+print(features_main_hls)
+print(features_main_modis)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

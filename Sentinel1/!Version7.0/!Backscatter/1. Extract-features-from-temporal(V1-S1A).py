@@ -280,11 +280,54 @@ for file in os.listdir(root_temporal)[2::3]:
     # Save
     df_plot.to_parquet(path_save)
 #%%
-# ext_act_id = 9188184472
-# ice = df[df["ext_act_id"] == ext_act_id]
-# ice[columns_temporal] = np.power(10, ice[columns_temporal]/10)
-# #%%
-# ice2 = df_plot[df_plot["ext_act_id"] == ext_act_id]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

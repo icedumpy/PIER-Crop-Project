@@ -386,12 +386,12 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 10
+n_trials = 5
 criteria = "f1"
 list_report_main = []
 #%%
 # =============================================================================
-# 1.1.Sharp drop OR Backgroud-BC
+# 1.Sharp drop OR Backgroud-BC
 # =============================================================================
 # Defind parameters
 list_feature_combinations = [
@@ -403,20 +403,13 @@ list_feature_combinations = [
     ['x_s1_bc_background_bc_minus_bc_t_max_p75'],
     ['x_s1_bc_background_bc_minus_bc_t_max_p90'],
     ['x_s1_bc_background_bc_minus_bc_t_max_p95'],
-    ['x_s1_bc_drop_min_min', 'x_s1_bc_drop_min_p5', 
-     'x_s1_bc_drop_min_p10', 'x_s1_bc_drop_min_p25'
-    ],
-    ['x_s1_bc_background_bc_minus_bc_t_max_p75', 'x_s1_bc_background_bc_minus_bc_t_max_p95',
-     'x_s1_bc_background_bc_minus_bc_t_max_p95', 'x_s1_bc_background_bc_minus_bc_t_max_p95'
-    ]
 ]
 figure_xlabels = [
-    "drop_min", "drop_p5", "drop_p10", "drop_p25",
-    "BG-BS_max", "BG-BS_p75", "BG-BS_p90", "BG-BS_p95",
-    "drop(All)", "BG-BS(All)"
+    "drop_min_min", "drop_min_p5", "drop_min_p10", "drop_min_p25",
+    "BG-BS_max_max", "BG-BS_max_p75", "BG-BS_max_p90", "BG-BS_max_p95",
 ]
 figure_title = "SharpDrop(Min) VS Background-BackScatter(Max)"
-folder_name = "1.1.SharpDrop_VS_Background-BackScatter"
+folder_name = "1.SharpDrop_VS_Background-BackScatter"
 
 # RUNNNN
 df_report = main_features_comparison(
@@ -430,34 +423,15 @@ features_drop = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_drop)
 #%%
 # =============================================================================
-# 1.2.Drop (Which combination?)
+# 2. Backscatter Level: Min (which rank?)
 # =============================================================================
-list_feature_combinations = get_combinations(features_drop)
-figure_xlabels = ["_".join(map(lambda val: val.split("_")[-1], features)) for features in list_feature_combinations]
-figure_title = "Drop (Combination)"
-folder_name = "1.2.Drop_combination"
-
-# RUNNNN
-df_report = main_features_comparison(
-    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
-    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
-    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
-)
-list_report_main.append(df_report)
-
-features_drop = df_report.loc[criteria].idxmax()[1].split("&")
-print(features_drop)
-#%% 
-# =============================================================================
-# 2. Backscatter Level: Min (which combination?)
-# =============================================================================
-list_feature_combinations = get_combinations([
-    "x_s1_bc_bc(t)_min_min",
-    "x_s1_bc_bc(t)_min_p5",
-    "x_s1_bc_bc(t)_min_p10",
-    "x_s1_bc_bc(t)_min_p25",
-])
-figure_xlabels = ["_".join(map(lambda val: val.split("_")[-1], features)) for features in list_feature_combinations]
+list_feature_combinations = [
+    ["x_s1_bc_bc(t)_min_min"],
+    ["x_s1_bc_bc(t)_min_p5"],
+    ["x_s1_bc_bc(t)_min_p10"],
+    ["x_s1_bc_bc(t)_min_p25"],
+]
+figure_xlabels = ["bc(t)_min_min", "bc(t)_min_p5", "bc(t)_min_p10", "bc(t)_min_p25"]
 figure_title = "BackScatter (Min)"
 folder_name = "2.BackScatter"
 
@@ -473,16 +447,16 @@ features_bs_level = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_bs_level)
 #%%
 # =============================================================================
-# 3. Backscatter Level+Drop: Min (which combination?)
+# 3. Backscatter Level+Drop: Min (which rank?)
 # =============================================================================
-list_feature_combinations = get_combinations([
-    "x_s1_bc_drop+bc_min_min",
-    "x_s1_bc_drop+bc_min_p5",
-    "x_s1_bc_drop+bc_min_p10",
-    "x_s1_bc_drop+bc_min_min",
-])
+list_feature_combinations = [
+    ["x_s1_bc_drop+bc_min_min"],
+    ["x_s1_bc_drop+bc_min_p5"],
+    ["x_s1_bc_drop+bc_min_p10"],
+    ["x_s1_bc_drop+bc_min_p25"],
+]
 
-figure_xlabels = ["_".join(map(lambda val: val.split("_")[-1], features)) for features in list_feature_combinations]
+figure_xlabels = ["drop+bc_min_min", "drop+bc_min_p5", "drop+bc_min_p10", "drop+bc_min_p25"]
 figure_title = "BackScatter+Drop (Min)"
 folder_name = "3.BackScatter_Plus_Drop"
 
@@ -523,9 +497,19 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
+# 5. Sentinel-1 Intensity (Select Threshold & rank & strict|relax) 
+# =============================================================================
+list_feature_combinations = []
+for threshold in [-12, -13, -14, -15, -16, -17, -18]:
+    for strict_or_relax in ["strict", "relax"]:
+        for rank in ["p75", "p90", "p95", "max"]:
+            print([column for column in df_tambon.columns.tolist() if (f"backscatter_under({threshold})" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
+#%%
+
+#%%
+# =============================================================================
 # 5.1 Sentinel-1 Intensity (Select Threshold) 
 # =============================================================================
-#%%
 list_feature_combinations = []
 for threshold in [-12, -13, -14, -15, -16, -17, -18]:
    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if f"backscatter_under({threshold})" in column])
@@ -544,11 +528,11 @@ df_report = main_features_comparison(
 # 5.2 After getting Threshold -> Which rank?
 # =============================================================================
 list_feature_combinations = []
-list_rank_combinations = get_combinations(["max", "p75", "p90", "p95"])
+list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
 threshold = int(df_report.loc[criteria].idxmax()[1].split("&")[-1].split("under(")[1][:3]) # Get threshold from string
 for rank in list_rank_combinations:
     list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ((f"backscatter_under({threshold})" in column)) and (column[-3:] in rank)])
-figure_xlabels = ["_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
+figure_xlabels = [f"BS_Under({threshold})_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "Sentinel-1 Intensity (Rank)"
 folder_name = "5.2.Sentinel-1 Intensity (Rank)"
 
@@ -591,7 +575,7 @@ list_report_main.append(df_report)
 # 6.2 GISTDA Flood -> Which rank?
 # =============================================================================
 list_feature_combinations = []
-list_rank_combinations = get_combinations(["max", "p75", "p90", "p95"])
+list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
 strict_or_relax = "relax" if "relax" in df_report.loc[criteria].idxmax()[0] else "strict"
 for rank in list_rank_combinations:
     if strict_or_relax == "relax":
@@ -599,7 +583,7 @@ for rank in list_rank_combinations:
     else:
         list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column) and (column[-3:] in rank)])
 
-figure_xlabels = ["_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
+figure_xlabels = [f"GISTDA Flood({strict_or_relax})_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "GISTDA (Rank)"
 folder_name = "6.2.GISTDA (Rank)"
 
@@ -619,7 +603,7 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 7.1 Rainfall GSMap (CR OR CWD OR ME)
+# 7.1 Rainfall GSMap (CR, CWD, ME)
 # =============================================================================
 list_feature_combinations = [
     features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_CR" in column],
@@ -647,11 +631,11 @@ list_report_main.append(df_report)
 # =============================================================================
 list_feature_combinations = []
 features_temp = [feature for feature in df_report.loc[criteria].idxmax()[1].split("&") if not feature in features_main]
-list_rank_combinations = get_combinations(["max", "p75", "p90", "p95"])
+list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
 for rank in list_rank_combinations:
     list_feature_combinations.append([feature for feature in features_temp if feature[-3:] in rank])
 
-figure_xlabels = ["_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
+figure_xlabels = [f"{features_temp[0].split('_')[-2]}_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "GSMap (Rank)"
 folder_name = "7.2.GSMap (Rank)"
 
@@ -673,8 +657,16 @@ print(features_main)
 # =============================================================================
 # 8.Soil moisture (Level)
 # =============================================================================
-list_feature_combinations = get_combinations(['x_smap_soil_moist_max_sm_max', 'x_smap_soil_moist_max_sm_p75', 'x_smap_soil_moist_max_sm_p90', 'x_smap_soil_moist_max_sm_p95']) + get_combinations(['x_smap_soil_moist_pctl_max_sm_max', 'x_smap_soil_moist_pctl_max_sm_p75', 'x_smap_soil_moist_pctl_max_sm_p90', 'x_smap_soil_moist_pctl_max_sm_p95'])
-
+list_feature_combinations = [
+    ['x_smap_soil_moist_max_sm_max'], 
+    ['x_smap_soil_moist_max_sm_p75'], 
+    ['x_smap_soil_moist_max_sm_p90'], 
+    ['x_smap_soil_moist_max_sm_p95'],
+    ['x_smap_soil_moist_pctl_max_sm_max'],
+    ['x_smap_soil_moist_pctl_max_sm_p75'], 
+    ['x_smap_soil_moist_pctl_max_sm_p90'],
+    ['x_smap_soil_moist_pctl_max_sm_p95']
+]
 figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "Soil moisture"
 folder_name = "8.1.Soil moisture"
@@ -718,8 +710,9 @@ list_report_main.append(df_report)
 # =============================================================================
 # 9.2.Soil moisture (Which rank)
 # =============================================================================
-list_feature_combinations = get_combinations([column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
 pctl, strict_or_relax = df_report.loc[criteria].idxmax()[0].split("_")
+
+list_feature_combinations = get_combinations([column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
 
 figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "Soil moisture (Rank)"
