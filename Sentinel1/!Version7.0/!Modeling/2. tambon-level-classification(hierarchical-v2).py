@@ -10,6 +10,7 @@ from icedumpy.plot_tools import plot_roc_curve
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, plot_confusion_matrix
 #%%
 def p5(x):
@@ -386,9 +387,20 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 5
+n_trials = 20
 criteria = "f1"
 list_report_main = []
+#%%
+# =============================================================================
+# 0.Area & Plant characteristic 
+# =============================================================================
+
+
+
+
+
+
+#%%
 #%%
 # =============================================================================
 # 1.Sharp drop OR Backgroud-BC
@@ -500,22 +512,14 @@ print(features_main)
 # 5. Sentinel-1 Intensity (Select Threshold & rank & strict|relax) 
 # =============================================================================
 list_feature_combinations = []
+figure_xlabels = []
 for threshold in [-12, -13, -14, -15, -16, -17, -18]:
     for strict_or_relax in ["strict", "relax"]:
         for rank in ["p75", "p90", "p95", "max"]:
-            print([column for column in df_tambon.columns.tolist() if (f"backscatter_under({threshold})" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
-#%%
-
-#%%
-# =============================================================================
-# 5.1 Sentinel-1 Intensity (Select Threshold) 
-# =============================================================================
-list_feature_combinations = []
-for threshold in [-12, -13, -14, -15, -16, -17, -18]:
-   list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if f"backscatter_under({threshold})" in column])
-figure_xlabels = [f"BS_Under({threshold})" for threshold in [-12, -13, -14, -15, -16, -17, -18]]
-figure_title = "Sentinel-1 Intensity (Threshold)"
-folder_name = "5.1.Sentinel-1 Intensity (Threshold)"
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"backscatter_under({threshold})" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
+            figure_xlabels.append(f"{threshold}_{strict_or_relax[0]}_{rank}")
+figure_title = "Sentinel-1 Intensity"
+folder_name = "5.1.Sentinel-1 Intensity"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -523,21 +527,26 @@ df_report = main_features_comparison(
     folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
     figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
 )
+list_report_main.append(df_report)
+
+# Main features!!
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
 #%%
 # =============================================================================
-# 5.2 After getting Threshold -> Which rank?
+# 6.GISTDA Flood Intensity (Select Threshold & rank & strict|relax)
 # =============================================================================
 list_feature_combinations = []
-list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
-threshold = int(df_report.loc[criteria].idxmax()[1].split("&")[-1].split("under(")[1][:3]) # Get threshold from string
-for rank in list_rank_combinations:
-    list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ((f"backscatter_under({threshold})" in column)) and (column[-3:] in rank)])
-figure_xlabels = [f"BS_Under({threshold})_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "Sentinel-1 Intensity (Rank)"
-folder_name = "5.2.Sentinel-1 Intensity (Rank)"
-
-# Add Main features
-list_feature_combinations = [features_main+features for features in list_feature_combinations]
+figure_xlabels = []
+for strict_or_relax in ["strict", "relax"]:
+    for rank in ["p75", "p90", "p95", "max"]:
+        if strict_or_relax == "relax":
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and ("relax" in column) and (column[-3:] == rank)])
+        else:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column) and (column[-3:] == rank)])
+        figure_xlabels.append(f"{strict_or_relax[0]}_{rank}")
+figure_title = "GISTDA Flood"
+folder_name = "6.GISTDA Flood"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -552,95 +561,25 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 6.1 GISTDA Flood (Normal Or Relax)
-# =============================================================================
-list_feature_combinations = [
-    features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column)],
-    features_main+[column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and ("relax" in column)],
-]
-
-figure_xlabels = ["GISTDA (strict)", "GISTDA (relax)"]
-figure_title = "GISTDA Strict VS Relax"
-folder_name = "6.1.GISTDA Strict VS Relax"
-
-# RUNNN
-df_report = main_features_comparison(
-    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
-    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
-    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
-)
-list_report_main.append(df_report)
-#%%
-# =============================================================================
-# 6.2 GISTDA Flood -> Which rank?
+# 7.Rainfall GSMap (CR|CWD|ME & whssn|stg)
 # =============================================================================
 list_feature_combinations = []
-list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
-strict_or_relax = "relax" if "relax" in df_report.loc[criteria].idxmax()[0] else "strict"
-for rank in list_rank_combinations:
-    if strict_or_relax == "relax":
-        list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and ("relax" in column) and (column[-3:] in rank)])
-    else:
-        list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ("x_gistda_flood_ratio" in column) and (not "relax" in column) and (column[-3:] in rank)])
-
-figure_xlabels = [f"GISTDA Flood({strict_or_relax})_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "GISTDA (Rank)"
-folder_name = "6.2.GISTDA (Rank)"
-
-# Add Main features
-list_feature_combinations = [features_main+features for features in list_feature_combinations]
-
-# RUNNN
-df_report = main_features_comparison(
-    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
-    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
-    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
-)
-list_report_main.append(df_report)
-
-# Main features
-features_main = df_report.loc[criteria].idxmax()[1].split("&")
-print(features_main)
-#%%
-# =============================================================================
-# 7.1 Rainfall GSMap (CR, CWD, ME)
-# =============================================================================
-list_feature_combinations = [
-    features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_CR" in column],
-    features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_CWD" in column],
-    features_main+[column for column in df_tambon.columns.tolist() if "x_gsmap_rain_wh_ssn_ME" in column],
-    features_main+[column for column in df_tambon.columns.tolist() if re.match(r"x_gsmap_rain_ph[0-9]+_CR", column)],
-    features_main+[column for column in df_tambon.columns.tolist() if re.match(r"x_gsmap_rain_ph[0-9]+_CWD", column)],
-    features_main+[column for column in df_tambon.columns.tolist() if re.match(r"x_gsmap_rain_ph[0-9]+_ME", column)]
-]
-
-figure_xlabels = ["CR Whole season", "CWD Whole season", "ME Whole season", "CR Growth stage", "CWD Growth stage", "ME Whole season"]
-figure_title = "GSMap (Whole season VS Growth Stage)"
-folder_name = "7.1.GSMap (Whole season VS Growth Stage)"
-
-# RUNNN
-df_report = main_features_comparison(
-    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
-    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
-    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
-)
-list_report_main.append(df_report)
-#%%
-# =============================================================================
-# 7.2 Rainfall GSMap (Which rank?)
-# =============================================================================
-list_feature_combinations = []
-features_temp = [feature for feature in df_report.loc[criteria].idxmax()[1].split("&") if not feature in features_main]
-list_rank_combinations = [["max"], ["p75"], ["p90"], ["p95"]]
-for rank in list_rank_combinations:
-    list_feature_combinations.append([feature for feature in features_temp if feature[-3:] in rank])
-
-figure_xlabels = [f"{features_temp[0].split('_')[-2]}_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "GSMap (Rank)"
-folder_name = "7.2.GSMap (Rank)"
-
-# Add Main features
-list_feature_combinations = [features_main+features for features in list_feature_combinations]
+figure_xlabels = []
+for rank in ["p75", "p90", "p95", "max"]:
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_CR" in column) and (column[-3:] == rank)])
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_CWD" in column) and (column[-3:] == rank)])
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_ME" in column) and (column[-3:] == rank)])
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_CR", column)) and (column[-3:] == rank)])
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_CWD", column)) and (column[-3:] == rank)])
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_ME", column)) and (column[-3:] == rank)])
+    figure_xlabels.append(f"CR_whssn_{rank}")
+    figure_xlabels.append(f"CWD_whssn_{rank}")
+    figure_xlabels.append(f"ME_whssn_{rank}")
+    figure_xlabels.append(f"CR_stg_{rank}")
+    figure_xlabels.append(f"CWD_stg_{rank}")
+    figure_xlabels.append(f"ME_stg_{rank}")
+figure_title = "GSMap"
+folder_name = "7.GSMap"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -668,8 +607,8 @@ list_feature_combinations = [
     ['x_smap_soil_moist_pctl_max_sm_p95']
 ]
 figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "Soil moisture"
-folder_name = "8.1.Soil moisture"
+figure_title = "Soil moisture (Level)"
+folder_name = "8.Soil moisture (Level)"
 
 # Add Main features
 list_feature_combinations = [features_main+features for features in list_feature_combinations]
@@ -687,39 +626,17 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 9.1.Soil moisture (Intensity)
+# 9.Soil moisture (Intensity)
 # =============================================================================
 list_feature_combinations = []
 figure_xlabels = []
 for pctl in [80, 85, 90, 95]:
     for strict_or_relax in ["strict", "relax"]:
-        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
-        figure_xlabels.append(f"{pctl}_{strict_or_relax}")
-
+        for rank in ["p75", "p90", "p95", "max"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_smap_soil_moist_v2_cnsct_period" in column) and (f"_{pctl}_" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
+            figure_xlabels.append(f"{pctl}_{strict_or_relax[0]}_{rank}")
 figure_title = "Soil moisture (Intensity)"
-folder_name = "9.1.Soil moisture (Intensity)"
-
-# RUNNN
-df_report = main_features_comparison(
-    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
-    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
-    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
-)
-list_report_main.append(df_report)
-#%%
-# =============================================================================
-# 9.2.Soil moisture (Which rank)
-# =============================================================================
-pctl, strict_or_relax = df_report.loc[criteria].idxmax()[0].split("_")
-
-list_feature_combinations = get_combinations([column for column in df_tambon.columns.tolist() if ('x_smap_soil_moist_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
-
-figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "Soil moisture (Rank)"
-folder_name = "9.2.Soil moisture (Rank)"
-
-# Add Main features
-list_feature_combinations = [features_main+features for features in list_feature_combinations]
+folder_name = "9.Soil moisture (Intensity)"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -738,15 +655,17 @@ print(features_main)
 # =============================================================================
 #%%
 # =============================================================================
-# 10.1.HLS NDVI (Level)
+# 10.HLS NDVI (Level)
 # =============================================================================
-list_feature_combinations = get_combinations(['x_hls_ndvi_v2_min_whssn_min', 'x_hls_ndvi_v2_min_whssn_p5', 'x_hls_ndvi_v2_min_whssn_p10', 'x_hls_ndvi_v2_min_whssn_p25']) + get_combinations(['x_hls_ndvi_v2_pctl_min_whssn_min', 'x_hls_ndvi_v2_pctl_min_whssn_p5', 'x_hls_ndvi_v2_pctl_min_whssn_p10', 'x_hls_ndvi_v2_pctl_min_whssn_p25'])
-figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
-figure_title = "HLS NDVI"
-folder_name = "10.1.HLS NDVI (Level)"
-
-# Add Main features
-list_feature_combinations = [features_main+features for features in list_feature_combinations]
+list_feature_combinations = []
+figure_xlabels = []
+for stg in ["whssn", "stg"]:
+    for rank1 in ["min", "med", "max", "pctl_min", "pctl_med", "pctl_max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "max", "p75", "p90", "p95"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column[-3:] == rank2)])
+            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
+figure_title = "HLS NDVI (Level)"
+folder_name = "10.HLS NDVI (Level)"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -761,50 +680,163 @@ features_main_hls = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main_hls)
 #%%
 # =============================================================================
-# 10.2.HLS NDVI (Intensity)
+# 11.HLS NDVI (Intensity)
 # =============================================================================
-#%%
 list_feature_combinations = []
 figure_xlabels = []
+for feature in [column for column in df_tambon.columns.tolist() if  ("x_hls_ndvi_v2_cnsct_period" in column)]:
+    list_feature_combinations.append(features_main_hls + [feature])
+    figure_xlabels.append(f"{''.join(feature.split('_')[-5:-3])}_{feature.split('_')[-3][0]}_{feature.split('_')[-1]}")
+figure_title = "HLS NDVI (Intensity)"
+folder_name = "11.HLS NDVI (Intensity)"
 
-for pctl in [5, 10, 15, 20]:
-    for strict_or_relax in ["strict", "relax"]:
-        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ('x_hls_ndvi_v2_cnsct_period' in column) and (f"_{pctl}_" in column) and (strict_or_relax in column)])
-        figure_xlabels.append(f"{pctl}_{strict_or_relax}")
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
-
-# [column for column in df_tambon.columns.tolist() if ('x_hls_ndvi_v2_cnsct_period' in column) and (f"_{pctl}_" in column)]
-
+# Main features
+features_main_hls = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_hls)
 #%%
+# =============================================================================
+# 12.Modis NDVI (Level)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for stg in ["whssn", "stg"]:
+    for rank1 in ["min", "med", "max", "pctl_min", "pctl_med", "pctl_max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "max", "p75", "p90", "p95"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("modis_ndvi" in column) and (not "cnsct" in column) and (stg in column) and (f"ndvi_{rank1}" in column) and (column[-3:] == rank2)])
+            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
+figure_title = "Modis NDVI (Level)"
+folder_name = "12.Modis NDVI (Level)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_modis)
 #%%
-# x_train, y_train = df_tambon_train[features_main].values, df_tambon_train["y"].values
-# x_test,  y_test  = df_tambon_test[features_main].values, df_tambon_test["y"].values
+# =============================================================================
+# 13.Modis NDVI (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns.tolist() if  ("x_hls_ndvi_v2_cnsct_period" in column)]:
+    list_feature_combinations.append(features_main_modis + [feature])
+    figure_xlabels.append(f"{''.join(feature.split('_')[-5:-3])}_{feature.split('_')[-3][0]}_{feature.split('_')[-1]}")
+figure_title = "Modis NDVI (Intensity)"
+folder_name = "13.Modis NDVI (Intensity)"
 
-# pipeline = Pipeline([
-#     ("scaler", StandardScaler()),
-#     ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
-# ])
-# pipeline.fit(x_train, y_train)
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
-# # Get predicted
-# y_test_pred  = pipeline.predict(x_test)
+# Main features
+features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_modis)
+#%%
+# =============================================================================
+# 14.Best of HLS vs Best of Modis
+# =============================================================================
+print(features_main_hls)
+print(features_main_modis)
+list_feature_combinations = [
+    features_main_hls,
+    features_main_modis
+]
+figure_xlabels = ["Best of HLS", "Best of Modis"]
+figure_title = "NDVI"
+folder_name = "14.NDVI"
 
-# # Calculate score
-# f1 = f1_score(y_test, y_test_pred)
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
-# # Confusion matrix
-# cnf_matrix = confusion_matrix(y_test, y_test_pred)
-# #%%
-# plt.close("all")
-# fig, ax = plt.subplots()
-# plot_roc_curve(pipeline, x_train, y_train, label="Train", color="g-", ax=ax)
-# plot_roc_curve(pipeline, x_test, y_test, label="Test", color="r--", ax=ax)
-# ax.legend()
-# ax.set_title(f"Training samples: {len(x_train)}, Test samples: {len(x_test)}")
-# fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
+# Main features
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print("==========================================================")
+print(features_main)
+#%% Evaluate model 
+x_train, y_train = df_tambon_train[features_main].values, df_tambon_train["y"].values
+x_test,  y_test  = df_tambon_test[features_main].values, df_tambon_test["y"].values
 
-# plt.close("all")
-# fig, ax = plt.subplots()
-# plot_confusion_matrix(pipeline, x_test, y_test, ax=ax)
-# ax.set_title("Confusion Matrix (Test)")
-# fig.savefig(os.path.join(root_save, "confusion_matrix.png"), bbox_inches="tight")
+scaler = StandardScaler()
+x_train = scaler.fit_transform(x_train)
+x_test  = scaler.transform(x_test)
+#%% Fine best parameters of rf
+# rf = RandomForestClassifier()
+# random_grid = {
+#     'bootstrap': [True, False],
+#     'criterion': ['gini', 'entropy'],
+#     'max_depth': [1, 2, 5, 10, None],
+#     'max_features': ['auto', 'sqrt'],
+#     'min_samples_leaf': [1, 2, 5],
+#     'min_samples_split': [2, 5, 10],
+#     'n_estimators': [10, 20, 50, 100, 200, 500]
+# }
+# rf_grid = GridSearchCV(estimator=rf, param_grid=random_grid, scoring="f1", cv=3, verbose=2, n_jobs=-1)
+# # Fit the random search model
+# rf_grid.fit(x_train, y_train)
+# print(rf_grid.best_params_)
+
+# base_model = RandomForestClassifier(n_jobs=-1)
+# base_model.fit(x_train, y_train)
+# print(f"Base model(F1): {f1_score(y_test, base_model.predict(x_test)):.4f}")
+
+# best_model = rf_grid.best_estimator_
+# print(f"Best model(F1): {f1_score(y_test, best_model.predict(x_test)):.4f}")
+#%% Evaluate model
+model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
+model.fit(x_train, y_train)
+#%%
+y_test_pred = model.predict(x_test)
+cnf_matrix = confusion_matrix(y_test, y_test_pred)
+#%% Plot confusion matrix
+fig, ax = plt.subplots()
+plot_confusion_matrix(model, x_test, y_test, ax=ax)
+fig.savefig(os.path.join(root_save, "confusion_matrix.png"), bbox_inches="tight")
+#%% Plot ROC Cutve
+fig, ax = plt.subplots()
+plot_roc_curve(model, x_train, y_train, label="Train", color="g-", ax=ax)
+plot_roc_curve(model, x_test , y_test, label="Train", color="r-", ax=ax)
+ax.grid()
+ax.legend()
+fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
+#%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
