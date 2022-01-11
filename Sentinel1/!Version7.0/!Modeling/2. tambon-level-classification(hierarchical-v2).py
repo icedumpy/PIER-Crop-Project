@@ -822,21 +822,6 @@ ax.grid()
 ax.legend()
 fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
 #%%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+cnf_matrix = confusion_matrix(y_test, y_test_pred)
+#%%
 
