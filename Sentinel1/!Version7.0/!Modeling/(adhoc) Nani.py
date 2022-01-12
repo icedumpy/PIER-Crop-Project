@@ -57,3 +57,24 @@ for model in get_list_model():
     dict_f1["RFE"][str(model)] = np.array(list_f1).mean()
 df_f1 = pd.DataFrame(dict_f1)
 #%%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
