@@ -362,54 +362,55 @@ x_test = scaler.transform(x_test)
 #%% Feature selection
 rf = RandomForestClassifier(n_jobs=-1)
 rfe = RFE(estimator=rf, n_features_to_select=50, step=1)
-#%% Parameter tuning
+rfe.fit(x_train, y_train)
 
-
-
-#%%
-#%%
-x_train, y_train = df_tambon_train[columns_training_feature].values, df_tambon_train["y"].values
-x_test,  y_test  = df_tambon_test[columns_training_feature].values, df_tambon_test["y"].values
-#%%
-model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
-selector = SelectFromModel(estimator=model, max_features=30)
-selector = selector.fit(x_train, y_train)
-list_sel_feature_mask = selector.get_support()
-list_sel_feature_names = np.array(columns_training_feature)[list_sel_feature_mask].tolist()
-#%%
-x_train, y_train = df_tambon_train[list_sel_feature_names].values, df_tambon_train["y"].values
-x_test,  y_test  = df_tambon_test[list_sel_feature_names].values, df_tambon_test["y"].values
+# Selected features (From RFE)
+columns_selected = np.array(columns_training_feature)[rfe.get_support()].tolist()
+#%% Train model
+# Get important features (from RFE)
+x_train, y_train = df_tambon_train[columns_selected].values, df_tambon_train["y"].values
+x_test,  y_test  = df_tambon_test[columns_selected].values, df_tambon_test["y"].values
 scaler = StandardScaler()
 x_train = scaler.fit_transform(x_train)
 x_test = scaler.transform(x_test)
-model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
-model.fit(x_train, y_train)
-# Result
-fig, ax = plt.subplots()
-plot_roc_curve(model, x_train, y_train, label="Train", color="g-", ax=ax)
-plot_roc_curve(model, x_test, y_test, label="Test", color="r--", ax=ax)
-ax.legend()
-print(classification_report(y_test, model.predict(x_test)))
-fig.savefig(os.path.join(root_save, "ROC_top_30.png"), bbox_inches="tight")
 #%%
+model = RandomForestClassifier(n_jobs=-1)
+model.fit(x_train, y_train)
+print(f1_score(y_test, model.predict(x_test)))
+#%%
+df_tambon_train[["y"]+columns_selected].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_rfe_train.parquet")
+df_tambon_test[["y"]+columns_selected].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_rfe_test.parquet")
+#%%
+# #%% Parameter tuning
+# # Get important features (from RFE)
+# x_train, y_train = df_tambon_train[columns_selected].values, df_tambon_train["y"].values
+# x_test,  y_test  = df_tambon_test[columns_selected].values, df_tambon_test["y"].values
+# scaler = StandardScaler()
+# x_train = scaler.fit_transform(x_train)
+# x_test = scaler.transform(x_test)
 
+# # Parameters tuning
+# rf = RandomForestClassifier(n_jobs=-1)
+# random_grid = {
+#     'bootstrap': [True, False],
+#     'criterion': ['gini', 'entropy'],
+#     'max_depth': [2, 5, 10, None],
+#     'max_features': ['auto', 'sqrt'],
+#     'min_samples_leaf': [1, 2, 5],
+#     'min_samples_split': [2, 5, 10],
+#     'n_estimators': [10, 100, 200, 500]
+# }
+# rf_grid = GridSearchCV(estimator=rf, param_grid=random_grid, scoring="f1", cv=3, verbose=2, n_jobs=-1)
+# # Fit the random search model
+# rf_grid.fit(x_train, y_train)
+# print(rf_grid.best_params_)
 
+# # Compare models (base vs best)
+# base_model = RandomForestClassifier(n_jobs=-1)
+# base_model.fit(x_train, y_train)
+# print(f"Base model(F1): {f1_score(y_test, base_model.predict(x_test)):.4f}")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# best_model = rf_grid.best_estimator_
+# print(f"Best model(F1): {f1_score(y_test, best_model.predict(x_test)):.4f}")
+#%%
+#%%

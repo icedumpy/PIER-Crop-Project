@@ -49,7 +49,8 @@ def run_model(x_train, y_train, x_test, y_test, features, n_trials=10):
     for i in range(n_trials):
         pipeline = Pipeline([
             ("scaler", StandardScaler()),
-            ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
+            # ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
+            ('rf', RandomForestClassifier(n_jobs=-1))
         ])
         pipeline.fit(x_train, y_train)
         
@@ -394,13 +395,6 @@ list_report_main = []
 # =============================================================================
 # 0.Area & Plant characteristic 
 # =============================================================================
-
-
-
-
-
-
-#%%
 #%%
 # =============================================================================
 # 1.Sharp drop OR Backgroud-BC
@@ -805,7 +799,7 @@ x_test  = scaler.transform(x_test)
 # best_model = rf_grid.best_estimator_
 # print(f"Best model(F1): {f1_score(y_test, best_model.predict(x_test)):.4f}")
 #%% Evaluate model
-model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
+model = RandomForestClassifier(n_jobs=-1)
 model.fit(x_train, y_train)
 #%%
 y_test_pred = model.predict(x_test)
@@ -824,4 +818,31 @@ fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
 #%%
 cnf_matrix = confusion_matrix(y_test, y_test_pred)
 #%%
+# recall = [80, 90, 95, 99]
+# fa = ?
+df_tambon_train[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_train.parquet")
+df_tambon_test[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_test.parquet")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
