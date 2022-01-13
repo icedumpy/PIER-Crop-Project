@@ -3,6 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import geopandas as gpd
 import matplotlib.pyplot as plt
 from itertools import combinations
 from imblearn.over_sampling import SMOTE 
@@ -25,6 +26,8 @@ def p90(x):
     return x.quantile(0.90)
 def p95(x):
     return x.quantile(0.95)
+def rice_ratio(x):
+    return (x == 1).sum()/len(x)
 
 def extract_and_combine_ranks(list_feature_combinations):
     return ["_".join(map(lambda val: val.split("_")[-1], features)) for features in list_feature_combinations]
@@ -138,9 +141,39 @@ def main_features_comparison(df_tambon_train, df_tambon_test, list_feature_combi
     df_report.columns = pd.MultiIndex.from_tuples([(short, real) for short, real in zip(figure_xlabels, df_report.columns)])
     df_report.to_csv(os.path.join(folder_save, report_name))    
     return df_report
+
+def add_rice_area(df, df_tambon):
+    # Calculate tambon area (sq. wa)
+    gdf = gpd.read_file(r"F:\CROP-PIER\CROP-WORK\!common_shapefiles\thailand\thailand-tambon.shp")
+    gdf["tambon_pcode"] = gdf["ADM3_PCODE"].str.slice(2,).astype("int32")
+    gdf = gdf.loc[gdf["tambon_pcode"].isin(df["tambon_pcode"])]
+    gdf = gdf.to_crs({"init":'epsg:32647'})
+    gdf["tambon_area_in_wa"] = gdf.geometry.area/4.0
+    
+    # Calculate mean percentage rice area (each year)
+    temp = df.groupby(["final_plant_year", "tambon_pcode"]).agg({"total_actual_plant_area_in_wa":"sum"})
+    temp = temp.reset_index()
+    temp = pd.merge(temp, gdf[["tambon_pcode", "tambon_area_in_wa"]], how="left", on="tambon_pcode")
+    temp["percent_rice_area"] = temp["total_actual_plant_area_in_wa"]/temp["tambon_area_in_wa"]
+    
+    # Calculate mean percentage rice area
+    temp = temp.groupby("tambon_pcode").agg({"percent_rice_area":"mean"})
+    temp = temp.reset_index()
+
+    # Finish
+    df_tambon = pd.merge(df_tambon, temp, how="left", on="tambon_pcode")
+    return df_tambon
 #%%
 dict_agg_features = {
     "y":"max",
+    # Rice characteristics
+    "x_rice_age_days":["mean"],
+    "x_photo_sensitive_f":[rice_ratio],
+    "x_jasmine_rice_f":[rice_ratio],
+    "x_sticky_rice_f":[rice_ratio],
+    # DEM
+    "x_dem_elevation":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_dem_gradient":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     # Sentinel-1
     "x_s1_bc_drop_min":["min", p5, p10, p25],
     "x_s1_bc_bc(t)_min":["min", p5, p10, p25],
@@ -259,99 +292,99 @@ dict_agg_features = {
     "x_smap_soil_moist_v2_cnsct_period_above_95_strict":["max", p75, p90, p95],
     "x_smap_soil_moist_v2_cnsct_period_above_95_relax":["max", p75, p90, p95],
     # HLS NDVI
-    "x_hls_ndvi_v2_min_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_med_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_max_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_min_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_med_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_max_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_min_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_med_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_max_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_min_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_med_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_max_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_min_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_med_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_max_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_min_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_med_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_max_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_min_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_med_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_max_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_min_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_med_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_max_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_min_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_med_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_max_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_min_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_med_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_hls_ndvi_v2_pctl_max_stg4":["min", p5, p10, p25, "max", p75, p90, p95],    
-    "x_hls_ndvi_v2_cnsct_period_under_5_strict_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_5_relax_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_10_strict_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_10_relax_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_15_strict_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_15_relax_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_20_strict_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_under_20_relax_whssn":["max", p75, p90, p95],
-    "x_hls_ndvi_v2_cnsct_period_above_80_strict_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_80_relax_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_85_strict_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_85_relax_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_90_strict_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_90_relax_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_95_strict_whssn":["min", p5, p10, p25],
-    "x_hls_ndvi_v2_cnsct_period_above_95_relax_whssn":["min", p5, p10, p25],
+    "x_hls_ndvi_v2_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_max_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_min_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_med_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_max_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_min_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_med_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_max_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_min_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_med_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_max_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_min_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_med_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_max_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_max_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_min_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_med_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_max_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_min_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_med_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_max_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_min_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_med_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_max_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_min_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_med_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_pctl_max_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_5_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_5_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_10_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_10_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_15_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_15_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_20_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_under_20_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_80_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_80_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_85_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_85_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_90_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_90_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_95_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_hls_ndvi_v2_cnsct_period_above_95_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     # MODIS NDVI
-    "x_modis_ndvi_min_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_med_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_max_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_min_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_med_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_max_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_min_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_med_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_max_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_min_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_med_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_max_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_min_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_med_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_max_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_min_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_med_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_max_whssn":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_min_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_med_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_max_stg1":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_min_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_med_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_max_stg2":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_min_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_med_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_max_stg3":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_min_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_med_stg4":["min", p5, p10, p25, "max", p75, p90, p95],
-    "x_modis_ndvi_pctl_max_stg4":["min", p5, p10, p25, "max", p75, p90, p95],    
-    "x_modis_ndvi_cnsct_period_under_5_strict_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_5_relax_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_10_strict_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_10_relax_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_15_strict_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_15_relax_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_20_strict_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_under_20_relax_whssn":["max", p75, p90, p95],
-    "x_modis_ndvi_cnsct_period_above_80_strict_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_80_relax_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_85_strict_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_85_relax_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_90_strict_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_90_relax_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_95_strict_whssn":["min", p5, p10, p25],
-    "x_modis_ndvi_cnsct_period_above_95_relax_whssn":["min", p5, p10, p25],
+    "x_modis_ndvi_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_max_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_min_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_med_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_max_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_min_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_med_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_max_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_min_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_med_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_max_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_min_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_med_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_max_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_max_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_min_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_med_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_max_stg1":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_min_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_med_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_max_stg2":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_min_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_med_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_max_stg3":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_min_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_med_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_pctl_max_stg4":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],    
+    "x_modis_ndvi_cnsct_period_under_5_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_5_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_10_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_10_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_15_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_15_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_20_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_under_20_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_80_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_80_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_85_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_85_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_90_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_90_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_95_strict_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
+    "x_modis_ndvi_cnsct_period_above_95_relax_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
 }
 #%%
 # Save folder
@@ -378,6 +411,7 @@ else:
     df_tambon = df_tambon[~df_tambon.iloc[:, 1:].isna().any(axis=1)]
     df_tambon = df_tambon.reset_index()
     df_tambon = df_tambon.rename(columns={"y_max":"y"})
+    df_tambon = add_rice_area(df, df_tambon)
     df_tambon.to_parquet(path_df_tambon)
     del df
 #%% Separate train test
