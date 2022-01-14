@@ -52,7 +52,6 @@ def run_model(x_train, y_train, x_test, y_test, features, n_trials=10):
     for i in range(n_trials):
         pipeline = Pipeline([
             ("scaler", StandardScaler()),
-            # ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
             ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
         ])
         pipeline.fit(x_train, y_train)
@@ -701,27 +700,15 @@ print(features_main)
 # =============================================================================
 # Another main topic NDVI (Best of MODIS vs Best of HLS)
 # =============================================================================
-#%%
-list_feature_combinations = []
-figure_xlabels = []
-for stg in ["whssn", "stg"]:
-    for rank1 in ["min", "med", "max", "pctl_min", "pctl_med", "pctl_max"]:
-        for rank2 in ["min", "p5", "p10", "p25", "max", "p75", "p90", "p95"]:
-            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column[-3:] == rank2)])
-            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
-#%%
-
-
-#%%
 # =============================================================================
 # 10.HLS NDVI (Level)
 # =============================================================================
 list_feature_combinations = []
 figure_xlabels = []
-for stg in ["whssn", "stg"]:
-    for rank1 in ["min", "med", "max", "pctl_min", "pctl_med", "pctl_max"]:
-        for rank2 in ["min", "p5", "p10", "p25", "max", "p75", "p90", "p95"]:
-            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column[-3:] == rank2)])
+for stg in ["stg"]:
+    for rank1 in ["min", "max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "mean", "median", "p75", "p90", "p95", "max"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column.split("_")[-1] == rank2)])
             figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
 figure_title = "HLS NDVI (Level)"
 folder_name = "10.HLS NDVI (Level)"
