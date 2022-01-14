@@ -53,7 +53,7 @@ def run_model(x_train, y_train, x_test, y_test, features, n_trials=10):
         pipeline = Pipeline([
             ("scaler", StandardScaler()),
             # ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
-            ('rf', RandomForestClassifier(n_jobs=-1))
+            ('rf', RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1))
         ])
         pipeline.fit(x_train, y_train)
         
@@ -154,7 +154,7 @@ def add_rice_area(df, df_tambon):
     temp = df.groupby(["final_plant_year", "tambon_pcode"]).agg({"total_actual_plant_area_in_wa":"sum"})
     temp = temp.reset_index()
     temp = pd.merge(temp, gdf[["tambon_pcode", "tambon_area_in_wa"]], how="left", on="tambon_pcode")
-    temp["percent_rice_area"] = temp["total_actual_plant_area_in_wa"]/temp["tambon_area_in_wa"]
+    temp["x_percent_rice_area"] = temp["total_actual_plant_area_in_wa"]/temp["tambon_area_in_wa"]
     
     # Calculate mean percentage rice area
     temp = temp.groupby("tambon_pcode").agg({"percent_rice_area":"mean"})
@@ -422,13 +422,37 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 20
+n_trials = 2
 criteria = "f1"
 list_report_main = []
 #%%
 # =============================================================================
-# 0.Area & Plant characteristic 
+# 0.Area & Plant characteristic (Control variables)
 # =============================================================================
+#%%
+list_feature_combinations = [
+    ['x_rice_age_days_mean', 'x_photo_sensitive_f_rice_ratio', 'x_jasmine_rice_f_rice_ratio',
+     'x_sticky_rice_f_rice_ratio', 'x_percent_rice_area',
+     'x_dem_elevation_min', 'x_dem_elevation_median', 'x_dem_elevation_max',
+     'x_dem_gradient_min', 'x_dem_gradient_median', 'x_dem_gradient_max']
+]
+figure_xlabels = [
+   "Control variables"
+]
+figure_title = "Control Variables"
+folder_name = "0.Control Variables"
+
+# RUNNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features!!
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
 #%%
 # =============================================================================
 # 1.Sharp drop OR Backgroud-BC
@@ -444,6 +468,8 @@ list_feature_combinations = [
     ['x_s1_bc_background_bc_minus_bc_t_max_p90'],
     ['x_s1_bc_background_bc_minus_bc_t_max_p95'],
 ]
+list_feature_combinations = [features_main+feature for feature in list_feature_combinations]
+
 figure_xlabels = [
     "drop_min_min", "drop_min_p5", "drop_min_p10", "drop_min_p25",
     "BG-BS_max_max", "BG-BS_max_p75", "BG-BS_max_p90", "BG-BS_max_p95",
@@ -471,6 +497,7 @@ list_feature_combinations = [
     ["x_s1_bc_bc(t)_min_p10"],
     ["x_s1_bc_bc(t)_min_p25"],
 ]
+list_feature_combinations = [features_main+feature for feature in list_feature_combinations]
 figure_xlabels = ["bc(t)_min_min", "bc(t)_min_p5", "bc(t)_min_p10", "bc(t)_min_p25"]
 figure_title = "BackScatter (Min)"
 folder_name = "2.BackScatter"
@@ -495,7 +522,7 @@ list_feature_combinations = [
     ["x_s1_bc_drop+bc_min_p10"],
     ["x_s1_bc_drop+bc_min_p25"],
 ]
-
+list_feature_combinations = [features_main+feature for feature in list_feature_combinations]
 figure_xlabels = ["drop+bc_min_min", "drop+bc_min_p5", "drop+bc_min_p10", "drop+bc_min_p25"]
 figure_title = "BackScatter+Drop (Min)"
 folder_name = "3.BackScatter_Plus_Drop"
@@ -518,7 +545,7 @@ list_feature_combinations = [
     features_drop,
     features_bs_level,
     features_bs_plus_drop_level,
-    features_drop+features_bs_level
+    list(dict.fromkeys(features_drop+features_bs_level)) # Remove duplicates from (control variables)
 ]
 figure_xlabels = ["Only drop", "Only BS", "drop+BS", "drop & BS"]
 figure_title = "Drop VS BackScatter VS Drop+BackScatter VS Drop & Backscatter"
@@ -589,23 +616,16 @@ features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
 # =============================================================================
-# 7.Rainfall GSMap (CR|CWD|ME & whssn|stg)
+# 7.Rainfall GSMap (CR|CWD|ME & whssn|stg) (which combination?)
 # =============================================================================
 list_feature_combinations = []
 figure_xlabels = []
-for rank in ["p75", "p90", "p95", "max"]:
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_CR" in column) and (column[-3:] == rank)])
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_CWD" in column) and (column[-3:] == rank)])
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn_ME" in column) and (column[-3:] == rank)])
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_CR", column)) and (column[-3:] == rank)])
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_CWD", column)) and (column[-3:] == rank)])
-    list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_ME", column)) and (column[-3:] == rank)])
-    figure_xlabels.append(f"CR_whssn_{rank}")
-    figure_xlabels.append(f"CWD_whssn_{rank}")
-    figure_xlabels.append(f"ME_whssn_{rank}")
-    figure_xlabels.append(f"CR_stg_{rank}")
-    figure_xlabels.append(f"CWD_stg_{rank}")
-    figure_xlabels.append(f"ME_stg_{rank}")
+for gsmap_feature in get_combinations(["CR", "CWD", "ME"]):
+    for rank in ["p75", "p90", "p95", "max"]:
+        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn" in column) and (column.split("_")[-2] in gsmap_feature) and (column[-3:] == rank)])
+        list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_", column)) and (column.split("_")[-2] in gsmap_feature) and (column[-3:] == rank)])
+        figure_xlabels.append(f"whssn_{'_'.join(gsmap_feature)}_{rank}")
+        figure_xlabels.append(f"stg_{'_'.join(gsmap_feature)}_{rank}")
 figure_title = "GSMap"
 folder_name = "7.GSMap"
 
@@ -681,6 +701,17 @@ print(features_main)
 # =============================================================================
 # Another main topic NDVI (Best of MODIS vs Best of HLS)
 # =============================================================================
+#%%
+list_feature_combinations = []
+figure_xlabels = []
+for stg in ["whssn", "stg"]:
+    for rank1 in ["min", "med", "max", "pctl_min", "pctl_med", "pctl_max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "max", "p75", "p90", "p95"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column[-3:] == rank2)])
+            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
+#%%
+
+
 #%%
 # =============================================================================
 # 10.HLS NDVI (Level)
@@ -826,14 +857,14 @@ x_test  = scaler.transform(x_test)
 # rf_grid.fit(x_train, y_train)
 # print(rf_grid.best_params_)
 
-# base_model = RandomForestClassifier(n_jobs=-1)
+# base_model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
 # base_model.fit(x_train, y_train)
 # print(f"Base model(F1): {f1_score(y_test, base_model.predict(x_test)):.4f}")
 
 # best_model = rf_grid.best_estimator_
 # print(f"Best model(F1): {f1_score(y_test, best_model.predict(x_test)):.4f}")
 #%% Evaluate model
-model = RandomForestClassifier(n_jobs=-1)
+model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
 model.fit(x_train, y_train)
 #%%
 y_test_pred = model.predict(x_test)
