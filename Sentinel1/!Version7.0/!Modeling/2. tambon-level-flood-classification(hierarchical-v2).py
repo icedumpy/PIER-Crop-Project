@@ -26,7 +26,7 @@ def p90(x):
     return x.quantile(0.90)
 def p95(x):
     return x.quantile(0.95)
-def rice_ratio(x):
+def ratio(x):
     return (x == 1).sum()/len(x)
 
 def extract_and_combine_ranks(list_feature_combinations):
@@ -156,7 +156,7 @@ def add_rice_area(df, df_tambon):
     temp["x_percent_rice_area"] = temp["total_actual_plant_area_in_wa"]/temp["tambon_area_in_wa"]
     
     # Calculate mean percentage rice area
-    temp = temp.groupby("tambon_pcode").agg({"percent_rice_area":"mean"})
+    temp = temp.groupby("tambon_pcode").agg({"x_percent_rice_area":"mean"})
     temp = temp.reset_index()
 
     # Finish
@@ -167,9 +167,10 @@ dict_agg_features = {
     "y":"max",
     # Rice characteristics
     "x_rice_age_days":["mean"],
-    "x_photo_sensitive_f":[rice_ratio],
-    "x_jasmine_rice_f":[rice_ratio],
-    "x_sticky_rice_f":[rice_ratio],
+    "x_photo_sensitive_f":[ratio],
+    "x_jasmine_rice_f":[ratio],
+    "x_sticky_rice_f":[ratio],
+    "x_plant_info_v2_irrigation_f":[ratio],  
     # DEM
     "x_dem_elevation":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     "x_dem_gradient":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
@@ -235,12 +236,10 @@ dict_agg_features = {
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_13-18_days_relax":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_19+_days_relax":["max", p75, p90, p95],
     # GISTDA Flood
-    # "x_gistda_flood_ratio_0":["max", p75, p90, p95], #?
     "x_gistda_flood_ratio_1-5":["max", p75, p90, p95],
     "x_gistda_flood_ratio_6-10":["max", p75, p90, p95],
     "x_gistda_flood_ratio_11-15":["max", p75, p90, p95],
     "x_gistda_flood_ratio_15+":["max", p75, p90, p95],
-    # "x_gistda_flood_ratio_relax_0":["max", p75, p90, p95],
     "x_gistda_flood_ratio_relax_1-5":["max", p75, p90, p95],
     "x_gistda_flood_ratio_relax_6-10":["max", p75, p90, p95],
     "x_gistda_flood_ratio_relax_11-15":["max", p75, p90, p95],
@@ -290,6 +289,38 @@ dict_agg_features = {
     "x_smap_soil_moist_v2_cnsct_period_above_90_relax":["max", p75, p90, p95],
     "x_smap_soil_moist_v2_cnsct_period_above_95_strict":["max", p75, p90, p95],
     "x_smap_soil_moist_v2_cnsct_period_above_95_relax":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_strict_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_relax_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_strict_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_relax_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_strict_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_relax_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_strict_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_relax_stg1":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_strict_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_relax_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_strict_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_relax_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_strict_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_relax_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_strict_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_relax_stg2":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_strict_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_relax_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_strict_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_relax_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_strict_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_relax_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_strict_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_relax_stg3":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_strict_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_80_relax_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_strict_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_85_relax_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_strict_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_90_relax_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_strict_stg4":["max", p75, p90, p95],
+    "x_smap_soil_moist_v3_cnsct_period_above_95_relax_stg4":["max", p75, p90, p95],
     # HLS NDVI
     "x_hls_ndvi_v2_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     "x_hls_ndvi_v2_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
@@ -388,7 +419,7 @@ dict_agg_features = {
 #%%
 # Save folder
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20211220\Flood"
-path_df_tambon = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_tambon_flood.parquet"
+path_df_tambon = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_4a_NE3_tambon_flood.parquet"
 
 # Load train test dataframe
 df_list_train = pd.read_csv(r"F:\CROP-PIER\CROP-WORK\batch_3c\list_tumbon_train.csv").iloc[:, 1]
@@ -400,7 +431,7 @@ if os.path.exists(path_df_tambon):
 # Load plot level then agg
 else:
     # Load features dataframe
-    df = pd.read_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed.parquet")
+    df = pd.read_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_4a_NE3_compressed.parquet")
     df = df[df["y"].isin([0, 3, 4])]
     df.loc[df["y"] != 0, "y"] = 1
     
@@ -421,7 +452,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 20
+n_trials = 2
 criteria = "f1"
 list_report_main = []
 #%%
@@ -430,8 +461,8 @@ list_report_main = []
 # =============================================================================
 #%%
 list_feature_combinations = [
-    ['x_rice_age_days_mean', 'x_photo_sensitive_f_rice_ratio', 'x_jasmine_rice_f_rice_ratio',
-     'x_sticky_rice_f_rice_ratio', 'x_percent_rice_area',
+    ['x_rice_age_days_mean', 'x_photo_sensitive_f_ratio', 'x_jasmine_rice_f_ratio',
+     'x_sticky_rice_f_ratio', 'x_percent_rice_area', "x_plant_info_v2_irrigation_f_ratio",
      'x_dem_elevation_min', 'x_dem_elevation_median', 'x_dem_elevation_max',
      'x_dem_gradient_min', 'x_dem_gradient_median', 'x_dem_gradient_max']
 ]
@@ -653,7 +684,7 @@ list_feature_combinations = [
     ['x_smap_soil_moist_pctl_max_sm_p90'],
     ['x_smap_soil_moist_pctl_max_sm_p95']
 ]
-figure_xlabels = ["pctl_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
+figure_xlabels = ["pctl_max_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) if "pctl" in features[0] else "max_"+"_".join(np.unique(list(map(lambda val: val.split("_")[-1], features))).tolist()) for features in list_feature_combinations]
 figure_title = "Soil moisture (Level)"
 folder_name = "8.Soil moisture (Level)"
 
@@ -677,11 +708,16 @@ print(features_main)
 # =============================================================================
 list_feature_combinations = []
 figure_xlabels = []
-for pctl in [80, 85, 90, 95]:
-    for strict_or_relax in ["strict", "relax"]:
-        for rank in ["p75", "p90", "p95", "max"]:
-            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if ("x_smap_soil_moist_v2_cnsct_period" in column) and (f"_{pctl}_" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
-            figure_xlabels.append(f"{pctl}_{strict_or_relax[0]}_{rank}")
+for version in ["v2", "v3"]:
+    for pctl in [80, 85, 90, 95]:
+        for strict_or_relax in ["strict", "relax"]:
+            for rank in ["p75", "p90", "p95", "max"]:
+                list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"x_smap_soil_moist_{version}_cnsct_period" in column) and (f"_{pctl}_" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
+                if version == "v2":
+                    dtype = "whssn"
+                else:
+                    dtype = "stg"
+                figure_xlabels.append(f"{dtype}_{pctl}_{strict_or_relax[0]}_{rank}")
 figure_title = "Soil moisture (Intensity)"
 folder_name = "9.Soil moisture (Intensity)"
 
@@ -867,8 +903,6 @@ plot_roc_curve(model, x_test , y_test, label="Train", color="r-", ax=ax)
 ax.grid()
 ax.legend()
 fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
-#%%
-cnf_matrix = confusion_matrix(y_test, y_test_pred)
 #%%
 # recall = [80, 90, 95, 99]
 # fa = ?
