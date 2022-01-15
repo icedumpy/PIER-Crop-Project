@@ -2,11 +2,10 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 #%%
-path = r"F:\CROP-PIER\CROP-WORK\batch_3c\df_pierxda_batch_3c_NE2.parquet"
+path = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_4a_NE3.parquet"
 path_save = path.replace(".parquet", "_compressed.parquet")
 #%%
 df = pd.read_parquet(path)
-# df = pd.read_pickle(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3.pkl")
 #%%
 for i, (column, dtype) in enumerate(zip(df.columns, df.dtypes.astype(str).tolist())):
     if column == "ext_act_id":
@@ -36,3 +35,5 @@ for column in df.columns:
     except:
         print(f"{column}: Skip")
 df_error = pd.DataFrame(dict_error.items())
+#%%
+print(df_error.diff(axis=1))
