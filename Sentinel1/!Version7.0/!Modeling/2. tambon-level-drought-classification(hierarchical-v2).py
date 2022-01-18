@@ -26,7 +26,7 @@ def p90(x):
     return x.quantile(0.90)
 def p95(x):
     return x.quantile(0.95)
-def rice_ratio(x):
+def ratio(x):
     return (x == 1).sum()/len(x)
 
 def extract_and_combine_ranks(list_feature_combinations):
@@ -156,7 +156,7 @@ def add_rice_area(df, df_tambon):
     temp["x_percent_rice_area"] = temp["total_actual_plant_area_in_wa"]/temp["tambon_area_in_wa"]
     
     # Calculate mean percentage rice area
-    temp = temp.groupby("tambon_pcode").agg({"percent_rice_area":"mean"})
+    temp = temp.groupby("tambon_pcode").agg({"x_percent_rice_area":"mean"})
     temp = temp.reset_index()
 
     # Finish
@@ -167,17 +167,19 @@ dict_agg_features = {
     "y":"max",
     # Rice characteristics
     "x_rice_age_days":["mean"],
-    "x_photo_sensitive_f":[rice_ratio],
-    "x_jasmine_rice_f":[rice_ratio],
-    "x_sticky_rice_f":[rice_ratio],
+    "x_photo_sensitive_f":[ratio],
+    "x_jasmine_rice_f":[ratio],
+    "x_sticky_rice_f":[ratio],
+    "x_plant_info_v2_irrigation_f":[ratio],  
     # DEM
     "x_dem_elevation":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     "x_dem_gradient":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     # Sentinel-1
-    "x_s1_bc_drop_min":["min", p5, p10, p25],
+    "x_s1_bc_bc(t-2)_min":["min", p5, p10, p25],
+    "x_s1_bc_bc(t-1)_min":["min", p5, p10, p25],
     "x_s1_bc_bc(t)_min":["min", p5, p10, p25],
-    "x_s1_bc_drop+bc_min":["min", p5, p10, p25],
-    "x_s1_bc_background_bc_minus_bc_t_max":["max", p75, p90, p95],
+    "x_s1_bc_bc(t+1)_min":["min", p5, p10, p25],
+    "x_s1_bc_bc(t+2)_min":["min", p5, p10, p25],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-12)_1-6_days_strict":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-12)_7-12_days_strict":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-12)_13-18_days_strict":["max", p75, p90, p95],
@@ -234,62 +236,76 @@ dict_agg_features = {
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_7-12_days_relax":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_13-18_days_relax":["max", p75, p90, p95],
     "x_s1_bc_v2_pct_of_plot_with_backscatter_under(-18)_19+_days_relax":["max", p75, p90, p95],
-    # GISTDA Flood
-    # "x_gistda_flood_ratio_0":["max", p75, p90, p95], #?
-    "x_gistda_flood_ratio_1-5":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_6-10":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_11-15":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_15+":["max", p75, p90, p95],
-    # "x_gistda_flood_ratio_relax_0":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_relax_1-5":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_relax_6-10":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_relax_11-15":["max", p75, p90, p95],
-    "x_gistda_flood_ratio_relax_15+":["max", p75, p90, p95],
+    # GISTDA DRI
+    "x_gistda_dri_max_dri":["max", p75, p90, p95],
+    "x_gistda_dri_pctl_max_dri":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_80_strict":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_80_relax":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_85_strict":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_85_relax":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_90_strict":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_90_relax":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_95_strict":["max", p75, p90, p95],
+    "x_gistda_dri_v2_cnsct_period_above_95_relax":["max", p75, p90, p95],
     # GSMap Rainfall
-    "x_gsmap_rain_ph1_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph2_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph3_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4a_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4b_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_wh_ssn_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_0_105_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_106_120_CR":["max", p75, p90, p95],
-    "x_gsmap_rain_ph1_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph2_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph3_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4a_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4b_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_wh_ssn_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_0_105_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_106_120_CWD":["max", p75, p90, p95],
-    "x_gsmap_rain_ph1_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_ph2_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_ph3_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4a_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_ph4b_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_wh_ssn_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_0_105_ME":["max", p75, p90, p95],
-    "x_gsmap_rain_106_120_ME":["max", p75, p90, p95],
-    # NECTEC Rain fall
-    "x_nectec_rain_ph1_mean_rainfall":["max", p75, p90, p95],
-    "x_nectec_rain_ph2_mean_rainfall":["max", p75, p90, p95],
-    "x_nectec_rain_ph3_mean_rainfall":["max", p75, p90, p95],
-    "x_nectec_rain_ph4_mean_rainfall":["max", p75, p90, p95],
-    "x_nectec_rain_wh_ssn_mean_rainfall":["max", p75, p90, p95],
+    "x_gsmap_rain_ph1_CR":["min", p5, p10, p25],
+    "x_gsmap_rain_ph2_CR":["min", p5, p10, p25],
+    "x_gsmap_rain_ph3_CR":["min", p5, p10, p25],
+    "x_gsmap_rain_ph4_CR":["min", p5, p10, p25],
+    "x_gsmap_rain_wh_ssn_CR":["min", p5, p10, p25],
+    "x_gsmap_rain_ph1_MD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph2_MD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph3_MD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph4_MD":["max", p75, p90, p95],
+    "x_gsmap_rain_wh_ssn_MD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph1_CDD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph2_CDD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph3_CDD":["max", p75, p90, p95],
+    "x_gsmap_rain_ph4_CDD":["max", p75, p90, p95],
+    "x_gsmap_rain_wh_ssn_CDD":["max", p75, p90, p95],
     # Soil Moisture
-    "x_smap_soil_moist_max_sm":["max", p75, p90, p95],
-    "x_smap_soil_moist_pctl_max_sm":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_80_strict":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_80_relax":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_85_strict":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_85_relax":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_90_strict":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_90_relax":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_95_strict":["max", p75, p90, p95],
-    "x_smap_soil_moist_v2_cnsct_period_above_95_relax":["max", p75, p90, p95],
+    "x_smap_soil_moist_min_sm":["min", p5, p10, p25],
+    "x_smap_soil_moist_pctl_min_sm":["min", p5, p10, p25],
+    "x_smap_soil_moist_v2_cnsct_period_under_5_strict":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_5_relax":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_10_strict":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_10_relax":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_15_strict":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_15_relax":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_20_strict":["max", p75, p90, p95],
+    "x_smap_soil_moist_v2_cnsct_period_under_20_relax":["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_strict_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_relax_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_strict_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_relax_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_strict_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_relax_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_strict_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_relax_stg1':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_strict_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_relax_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_strict_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_relax_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_strict_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_relax_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_strict_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_relax_stg2':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_strict_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_relax_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_strict_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_relax_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_strict_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_relax_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_strict_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_relax_stg3':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_strict_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_5_relax_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_strict_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_10_relax_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_strict_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_15_relax_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_strict_stg4':["max", p75, p90, p95],
+    'x_smap_soil_moist_v3_cnsct_period_under_20_relax_stg4':["max", p75, p90, p95],
     # HLS NDVI
     "x_hls_ndvi_v2_min_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     "x_hls_ndvi_v2_med_whssn":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
@@ -388,7 +404,7 @@ dict_agg_features = {
 #%%
 # Save folder
 root_save = r"F:\CROP-PIER\CROP-WORK\Presentation\20211220\Drought"
-path_df_tambon = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_tambon_drought.parquet"
+path_df_tambon = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_4a_NE3_tambon_drought.parquet"
 
 # Load train test dataframe
 df_list_train = pd.read_csv(r"F:\CROP-PIER\CROP-WORK\batch_3c\list_tumbon_train.csv").iloc[:, 1]
@@ -400,7 +416,7 @@ if os.path.exists(path_df_tambon):
 # Load plot level then agg
 else:
     # Load features dataframe
-    df = pd.read_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed.parquet")
+    df = pd.read_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_4a_NE3_compressed.parquet")
     df = df[df["y"].isin([0, 1, 2])]
     df.loc[df["y"] != 0, "y"] = 1
     
@@ -430,8 +446,8 @@ list_report_main = []
 # =============================================================================
 #%%
 list_feature_combinations = [
-    ['x_rice_age_days_mean', 'x_photo_sensitive_f_rice_ratio', 'x_jasmine_rice_f_rice_ratio',
-     'x_sticky_rice_f_rice_ratio', 'x_percent_rice_area',
+    ['x_rice_age_days_mean', 'x_photo_sensitive_f_ratio', 'x_jasmine_rice_f_ratio',
+     'x_sticky_rice_f_ratio', 'x_percent_rice_area', "x_plant_info_v2_irrigation_f_ratio",
      'x_dem_elevation_min', 'x_dem_elevation_median', 'x_dem_elevation_max',
      'x_dem_gradient_min', 'x_dem_gradient_median', 'x_dem_gradient_max']
 ]
@@ -453,9 +469,86 @@ list_report_main.append(df_report)
 features_main = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_main)
 #%%
+# =============================================================================
+# 1.HLS NDVI (Extreme)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for stg in ["stg"]:
+    for rank1 in ["min", "max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "mean", "median", "p75", "p90", "p95", "max"]:
+            list_feature_combinations.append([column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column.split("_")[-1] == rank2)])
+            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
+figure_title = "HLS NDVI (Extreme)"
+folder_name = "1.HLS NDVI (Extreme)"
 
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
+# Main features
+features_hls_extreme = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_hls_extreme)
 
+# Get top-n features
+features_top_hls_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_hls_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 2. HLS NDVI (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns.tolist() if  ("x_hls_ndvi_v2_cnsct_period" in column)]:
+    list_feature_combinations.append([feature])
+    figure_xlabels.append(f"{''.join(feature.split('_')[-5:-3])}_{feature.split('_')[-3][0]}_{feature.split('_')[-1]}")
+figure_title = "HLS NDVI (Intensity)"
+folder_name = "2.HLS NDVI (Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_hls_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_hls_intensity)
+
+# Get top-20 features
+features_top_hls_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_hls_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 3. HLS NDVI (Extreme + Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for extreme, extreme_xlabel in zip(features_top_hls_extreme, figure_xlabels_top_hls_extreme):
+    for intensity, intensity_xlabel in zip(features_top_hls_intensity, figure_xlabels_top_hls_intensity):
+        list_feature_combinations.append(extreme+intensity)
+        figure_xlabels.append("&".join(extreme_xlabel+intensity_xlabel))
+figure_title = "HLS NDVI (Extreme+Intensity)"
+folder_name = "3.HLS NDVI (Extreme+Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_hls_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_hls_extreme_intensity)
+#%%
 
 
 

@@ -452,7 +452,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 2
+n_trials = 20
 criteria = "f1"
 list_report_main = []
 #%%
@@ -906,8 +906,8 @@ fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")
 #%%
 # recall = [80, 90, 95, 99]
 # fa = ?
-df_tambon_train[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_train.parquet")
-df_tambon_test[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_test.parquet")
+# df_tambon_train[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_train.parquet")
+# df_tambon_test[["y"]+features_main].to_parquet(r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\df_pierxda_batch_3c_NE3_compressed_mannually_selected_test.parquet")
 
 
 
