@@ -477,7 +477,7 @@ figure_xlabels = []
 for stg in ["stg"]:
     for rank1 in ["min", "max"]:
         for rank2 in ["min", "p5", "p10", "p25", "mean", "median", "p75", "p90", "p95", "max"]:
-            list_feature_combinations.append([column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column.split("_")[-1] == rank2)])
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("hls" in column) and (not "cnsct" in column) and (stg in column) and (f"v2_{rank1}" in column) and (column.split("_")[-1] == rank2)])
             figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
 figure_title = "HLS NDVI (Extreme)"
 folder_name = "1.HLS NDVI (Extreme)"
@@ -504,7 +504,7 @@ figure_xlabels_top_hls_extreme = df_report.loc[criteria].sort_values(ascending=F
 list_feature_combinations = []
 figure_xlabels = []
 for feature in [column for column in df_tambon.columns.tolist() if  ("x_hls_ndvi_v2_cnsct_period" in column)]:
-    list_feature_combinations.append([feature])
+    list_feature_combinations.append(features_main+[feature])
     figure_xlabels.append(f"{''.join(feature.split('_')[-5:-3])}_{feature.split('_')[-3][0]}_{feature.split('_')[-1]}")
 figure_title = "HLS NDVI (Intensity)"
 folder_name = "2.HLS NDVI (Intensity)"
@@ -532,10 +532,10 @@ list_feature_combinations = []
 figure_xlabels = []
 for extreme, extreme_xlabel in zip(features_top_hls_extreme, figure_xlabels_top_hls_extreme):
     for intensity, intensity_xlabel in zip(features_top_hls_intensity, figure_xlabels_top_hls_intensity):
-        list_feature_combinations.append(extreme+intensity)
+        list_feature_combinations.append(list(dict.fromkeys(extreme+intensity)))
         figure_xlabels.append("&".join(extreme_xlabel+intensity_xlabel))
-figure_title = "HLS NDVI (Extreme+Intensity)"
-folder_name = "3.HLS NDVI (Extreme+Intensity)"
+figure_title = "HLS NDVI (Extreme&Intensity)"
+folder_name = "3.HLS NDVI (Extreme&Intensity)"
 
 # RUNNN
 df_report = main_features_comparison(
@@ -549,17 +549,97 @@ list_report_main.append(df_report)
 features_hls_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_hls_extreme_intensity)
 #%%
+# =============================================================================
+# (1&2&3) Compare results of each combination
+# =============================================================================
+# Main features
+# Select the best set of features
+df_report = pd.concat([df_report.T for df_report in list_report_main]).T
+features_main_hls = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_hls)
+#%%
+# =============================================================================
+# 4. Modis NDVI (Extreme)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for stg in ["stg"]:
+    for rank1 in ["min", "max"]:
+        for rank2 in ["min", "p5", "p10", "p25", "mean", "median", "p75", "p90", "p95", "max"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if  ("modis_ndvi" in column) and (not "cnsct" in column) and (stg in column) and (f"ndvi_{rank1}" in column) and (column.split("_")[-1] == rank2)])
+            figure_xlabels.append(f"{rank1}_{stg}_{rank2}")
+figure_title = "Modis NDVI (Level)"
+folder_name = "4.Modis NDVI (Level)"
 
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
+# Main features
+features_modis_extreme = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_modis_extreme)
 
+# # Get top-n features
+features_top_modis_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_modis_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(0).str.split("&").tolist()
+#%%
+# 5. Modis NDVI (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns.tolist() if  ("x_modis_ndvi_cnsct_period" in column)]:
+    list_feature_combinations.append(features_main+[feature])
+    figure_xlabels.append(f"{''.join(feature.split('_')[-5:-3])}_{feature.split('_')[-3][0]}_{feature.split('_')[-1]}")
+figure_title = "Modis NDVI (Intensity)"
+folder_name = "5.Modis NDVI (Intensity)"
 
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
+# Main features
+features_modis_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_modis_intensity)
 
+# Get top-20 features
+features_top_modis_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_modis_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 6. HLS NDVI (Extreme + Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for extreme, extreme_xlabel in zip(features_top_modis_extreme, figure_xlabels_top_modis_extreme):
+    for intensity, intensity_xlabel in zip(features_top_modis_intensity, figure_xlabels_top_modis_intensity):
+        list_feature_combinations.append(list(dict.fromkeys(extreme+intensity)))
+        figure_xlabels.append("&".join(extreme_xlabel+intensity_xlabel))
+figure_title = "Modis NDVI (Extreme&Intensity)"
+folder_name = "6.Modis NDVI (Extreme&Intensity)"
 
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
-
-
-
+# Main features
+features_modis_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_modis_extreme_intensity)
+#%%
+# df_report = pd.concat([df_report.T for df_report in list_report_main[-3:]]).T
+# features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
+# print(features_main_modis)
 
 
 
