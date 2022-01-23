@@ -437,7 +437,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 2
+n_trials = 20
 criteria = "f1"
 list_report_main = []
 #%%
@@ -550,7 +550,7 @@ features_hls_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_hls_extreme_intensity)
 #%%
 # =============================================================================
-# (1&2&3) Compare results of each combination
+# (1&2&3) HLS: Compare results of each combination
 # =============================================================================
 # Main features
 # Select the best set of features
@@ -587,6 +587,7 @@ print(features_modis_extreme)
 features_top_modis_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(1).str.split("&").tolist()
 figure_xlabels_top_modis_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:10].index.get_level_values(0).str.split("&").tolist()
 #%%
+# =============================================================================
 # 5. Modis NDVI (Intensity)
 # =============================================================================
 list_feature_combinations = []
@@ -637,9 +638,315 @@ list_report_main.append(df_report)
 features_modis_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
 print(features_modis_extreme_intensity)
 #%%
-# df_report = pd.concat([df_report.T for df_report in list_report_main[-3:]]).T
-# features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
-# print(features_main_modis)
+# =============================================================================
+# (4&5&6) Modis: Compare results of each combination
+# =============================================================================
+df_report = pd.concat([df_report.T for df_report in list_report_main[-3:]]).T
+features_main_modis = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_modis)
+#%% 
+# =============================================================================
+# (1&2&3&4&5&6) NDVI conclusion
+# =============================================================================
+features_main = list(dict.fromkeys(features_main_hls+features_main_modis))
+#%%
+# =============================================================================
+# 7. DRI (Extreme)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns if ("x_gistda_dri" in column) and (not "pctl" in column) and (not "cnsct" in column)]:
+    list_feature_combinations.append(features_main+[feature])
+    figure_xlabels.append("_".join([feature.split("_")[-3], feature.split("_")[-1]]))
 
+figure_title = "GISTDA DRI (Extreme)"
+folder_name = "7.GISTDA DRI (Extreme)"
 
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
 
+# Main features
+features_dri_extreme = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_dri_extreme)
+
+# Get top-20(4) features
+features_top_dri_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_dri_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 8. DRI (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns if ("x_gistda_dri" in column) and ("cnsct" in column)]:
+    list_feature_combinations.append(features_main+[feature])
+    figure_xlabels.append(f"{''.join(feature.split('_')[-4:-2])}_{feature.split('_')[-2][0]}_{feature.split('_')[-1]}")
+figure_title = "GISTDA DRI (Intensity)"
+folder_name = "8.GISTDA DRI (Intensity)"
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_dri_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_dri_intensity)
+
+# Get top-20 features
+features_top_dri_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_dri_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 9. DRI (Extreme + Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for extreme, extreme_xlabel in zip(features_top_dri_extreme, figure_xlabels_top_dri_extreme):
+    for intensity, intensity_xlabel in zip(features_top_dri_intensity, figure_xlabels_top_dri_intensity):
+        list_feature_combinations.append(list(dict.fromkeys(extreme+intensity)))
+        figure_xlabels.append("&".join(extreme_xlabel+intensity_xlabel))
+figure_title = "GISTDA DRI (Extreme&Intensity)"
+folder_name = "9.GISTDA DRI (Extreme&Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_dri_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_dri_extreme_intensity)
+#%%
+# =============================================================================
+# (7&8&9) DRI : Compare results of each combination
+# =============================================================================
+df_report = pd.concat([df_report.T for df_report in list_report_main[-3:]]).T
+features_main_dri = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_dri)
+#%%
+# =============================================================================
+# NDVI + DRI
+# =============================================================================
+features_main = list(dict.fromkeys(features_main+features_main_dri))
+#%% :( 
+# =============================================================================
+# 10. GSMap
+# =============================================================================
+# Easy way (Ok)
+# min <-> max
+# p5 <-> p95
+# p10 <-> p90
+# p25 <-> p75
+list_feature_combinations = []
+figure_xlabels = []
+for gsmap_feature in get_combinations(["CR", "MD", "CDD"]):
+    for rank1 in ["p75", "p90", "p95", "max"]:
+        if rank1 == "p75":
+            rank2 = "p25"
+        elif rank1 == "p90":
+            rank2 = "p10"
+        elif rank1 == "p95":
+            rank2 = "p5"
+        elif rank1 == "max":
+            rank2 = "min"
+        list_feature_combinations.append([column for column in df_tambon.columns.tolist() if ("x_gsmap_rain_wh_ssn" in column) and (column.split("_")[-2] in gsmap_feature) and ((column.split("_")[-1] == rank1 or column.split("_")[-1] == rank2))])
+        list_feature_combinations.append([column for column in df_tambon.columns.tolist() if (re.match(r"x_gsmap_rain_ph[0-9]+_", column)) and (column.split("_")[-2] in gsmap_feature) and ((column.split("_")[-1] == rank1 or column.split("_")[-1] == rank2))])
+        figure_xlabels.append(f'whssn_{"_".join([feature+f"_{rank2}" if feature == "CR" else feature+f"_{rank1}" for feature in gsmap_feature])}')
+        figure_xlabels.append(f'stg_{"_".join([feature+f"_{rank2}" if feature == "CR" else feature+f"_{rank1}" for feature in gsmap_feature])}')
+figure_title = "GSMap"
+folder_name = "10.GSMap"
+
+# Add Main features
+list_feature_combinations = [features_main+features for features in list_feature_combinations]
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+# =============================================================================
+# 11. Soil Moisture (Extreme)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns if ("x_smap_soil_moist" in column) and (not "pctl" in column) and (not "cnsct" in column)]:
+    list_feature_combinations.append(features_main+[feature])
+    figure_xlabels.append("_".join([feature.split("_")[-3], feature.split("_")[-1]]))
+figure_title = "Soil Moisture (Extreme)"
+folder_name = "11.Soil Moisture (Extreme)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_smap_extreme = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_smap_extreme)
+
+# Get top-20(4) features
+features_top_smap_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_smap_extreme = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 12. Soil Moisture (Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for feature in [column for column in df_tambon.columns if ("x_smap_soil_moist" in column) and ("cnsct" in column) and (not "stg" in column)]:
+    list_feature_combinations.append(features_main+[feature])
+    figure_xlabels.append(f"whssn_{''.join(feature.split('_')[-4:-2])}_{feature.split('_')[-2][0]}_{feature.split('_')[-1]}")
+for strict_or_relax in ["strict", "relax"]:
+    for rank1 in ["5", "10", "15", "20"]:
+        for rank2 in ["max", "p75", "p90", 'p95']:
+            list_feature_combinations.append(features_main+[
+                f"x_smap_soil_moist_v3_cnsct_period_under_{rank1}_{strict_or_relax}_stg1_{rank2}",
+                f"x_smap_soil_moist_v3_cnsct_period_under_{rank1}_{strict_or_relax}_stg2_{rank2}",
+                f"x_smap_soil_moist_v3_cnsct_period_under_{rank1}_{strict_or_relax}_stg3_{rank2}",
+                f"x_smap_soil_moist_v3_cnsct_period_under_{rank1}_{strict_or_relax}_stg4_{rank2}"
+            ])
+            figure_xlabels.append(f"stg_under{rank1}_{strict_or_relax[0]}_{rank2}")
+figure_title = "Soil Moisture (Intensity)"
+folder_name = "12.Soil Moisture (Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_smap_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_smap_intensity)
+
+# Get top-20(4) features
+features_top_smap_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(1).str.split("&").tolist()
+figure_xlabels_top_smap_intensity = df_report.loc[criteria].sort_values(ascending=False).iloc[:20].index.get_level_values(0).str.split("&").tolist()
+#%%
+# =============================================================================
+# 13. Soil Moisture (Extreme + Intensity)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for extreme, extreme_xlabel in zip(features_top_smap_extreme, figure_xlabels_top_smap_extreme):
+    for intensity, intensity_xlabel in zip(features_top_smap_intensity, figure_xlabels_top_smap_intensity):
+        list_feature_combinations.append(list(dict.fromkeys(extreme+intensity)))
+        figure_xlabels.append("&".join(extreme_xlabel+intensity_xlabel))
+figure_title = "Soil Moisture (Extreme&Intensity)"
+folder_name = "13.Soil Moisture (Extreme&Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_smap_extreme_intensity = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_smap_extreme_intensity)
+#%%
+# =============================================================================
+# (11&12&13) Soil Moisture : Compare results of each combination
+# =============================================================================
+df_report = pd.concat([df_report.T for df_report in list_report_main[-3:]]).T
+features_main_smap = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main_smap)
+#%%
+# =============================================================================
+# NDVI + DRI + GSMap + Soil Moisture
+# =============================================================================
+features_main = list(dict.fromkeys(features_main+features_main_smap))
+#%%
+# =============================================================================
+# 14. Sentinel-1 (BC)
+# =============================================================================
+list_feature_combinations = []
+figure_xlabels = []
+for rank in ["min", "p5", "p10", "p25"]:
+    list_feature_combinations.append(features_main+[column for column in df_tambon.columns if ("x_s1_bc_bc" in column) and (column.split("_")[-1] == rank)])
+    figure_xlabels.append(f"min_{rank}")
+figure_title = "Backscatter (Extreme)"
+folder_name = "14.Backscatter (Extreme)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%%
+list_feature_combinations = []
+figure_xlabels = []
+for threshold in [-12, -13, -14, -15, -16, -17, -18]:
+    for strict_or_relax in ["strict", "relax"]:
+        for rank in ["p75", "p90", "p95", "max"]:
+            list_feature_combinations.append(features_main+[column for column in df_tambon.columns.tolist() if (f"backscatter_under({threshold})" in column) and (strict_or_relax in column) and (column[-3:] == rank)])
+            figure_xlabels.append(f"{threshold}_{strict_or_relax[0]}_{rank}")
+figure_title = "Backscatter (Extreme+Intensity)"
+folder_name = "15.Backscatter (Extreme+Intensity)"
+
+# RUNNN
+df_report = main_features_comparison(
+    df_tambon_train, df_tambon_test, list_feature_combinations, criteria, 
+    folder_name=folder_name, figure_name="F1_comparison.png", report_name="Report.csv",
+    figure_xlabels=figure_xlabels, figure_title=figure_title, n_trials=n_trials
+)
+list_report_main.append(df_report)
+
+# Main features
+features_main = df_report.loc[criteria].idxmax()[1].split("&")
+print(features_main)
+#%% Evaluate model 
+x_train, y_train = df_tambon_train[features_main].values, df_tambon_train["y"].values
+x_test,  y_test  = df_tambon_test[features_main].values, df_tambon_test["y"].values
+
+scaler = StandardScaler()
+x_train = scaler.fit_transform(x_train)
+x_test  = scaler.transform(x_test)
+#%%
+model = RandomForestClassifier(n_estimators=200, max_depth=5, criterion="gini", n_jobs=-1)
+model.fit(x_train, y_train)
+#%%
+y_test_pred = model.predict(x_test)
+cnf_matrix = confusion_matrix(y_test, y_test_pred)
+#%% Plot confusion matrix
+fig, ax = plt.subplots()
+plot_confusion_matrix(model, x_test, y_test, ax=ax)
+fig.savefig(os.path.join(root_save, "confusion_matrix.png"), bbox_inches="tight")
+#%% Plot ROC Cutve
+fig, ax = plt.subplots()
+plot_roc_curve(model, x_train, y_train, label="Train", color="g-", ax=ax)
+plot_roc_curve(model, x_test , y_test, label="Train", color="r-", ax=ax)
+ax.grid()
+ax.legend()
+fig.savefig(os.path.join(root_save, "ROC.png"), bbox_inches="tight")

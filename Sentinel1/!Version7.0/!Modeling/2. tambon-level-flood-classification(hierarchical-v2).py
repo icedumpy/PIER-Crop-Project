@@ -165,13 +165,12 @@ def add_rice_area(df, df_tambon):
 #%%
 dict_agg_features = {
     "y":"max",
-    # Rice characteristics
+    # Control variables
     "x_rice_age_days":["mean"],
     "x_photo_sensitive_f":[ratio],
     "x_jasmine_rice_f":[ratio],
     "x_sticky_rice_f":[ratio],
     "x_plant_info_v2_irrigation_f":[ratio],  
-    # DEM
     "x_dem_elevation":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     "x_dem_gradient":["min", p5, p10, p25, "mean", "median", p75, p90, p95, "max"],
     # Sentinel-1

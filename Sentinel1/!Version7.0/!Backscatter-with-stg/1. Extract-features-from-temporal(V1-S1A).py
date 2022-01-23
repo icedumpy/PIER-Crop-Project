@@ -82,15 +82,16 @@ def initialize_plot(ylim=(-20, 0)):
 
 def assign_sharp_drop(df, columns_stg, label):
     df = df.copy()
+    # Temporary column (t15)
+    df["t15"] = df["t14"]
     
     # Loop for each group (group by ext_act_id)
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
-        # Find which "period" (1, 2, or 3) gives min(diff+backscatter)
+        # Find which "period" (1 or 2) gives min(diff+backscatter)
         periods = int(np.argmin([
-            (df_grp[columns_stg].diff(periods=1, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
-            (df_grp[columns_stg].diff(periods=2, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
-            (df_grp[columns_stg].diff(periods=3, axis=1)+df_grp[columns_stg]).min(axis=1).min()
+            (df_grp[columns].diff(periods=1, axis=1)+df_grp[columns]).min(axis=1).min(),
+            (df_grp[columns].diff(periods=2, axis=1)+df_grp[columns]).min(axis=1).min(),
         ])+1)
         
         # Find which column
@@ -122,7 +123,7 @@ def assign_sharp_drop(df, columns_stg, label):
         df_grp[f"background_bc-bc(t)_{label}"] = df_grp[f"background_bc_{label}"]-df_grp[f"bc(t)_{label}"]
 
         # Append to list
-        list_df.append(df_grp) 
+        list_df.append(df_grp)
         
     # Concat and return
     df = pd.concat(list_df, ignore_index=True)
@@ -248,8 +249,8 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
 #%%
-root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
-root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_version_for_nrt(at-False)"
+root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_version_for_nrt(at-False)"
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 # Load df rice code
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
@@ -258,12 +259,11 @@ df_rice_code = df_rice_code[["BREED_CODE", "photo_sensitive_f"]]
 os.makedirs(root_save, exist_ok=True)
 #%%
 # Define columns for each growth stage
-columns = [f"t{i}" for i in range(0, 30)]
-columns_stg1 = [f"t{i}" for i in range(0 , 7 )]
-columns_stg2 = [f"t{i}" for i in range(7 , 15)]
-columns_stg3 = [f"t{i}" for i in range(15, 20)]
-columns_stg4 = [f"t{i}" for i in range(20, 30)]
-columns_large = [f"t{i}" for i in range(0, 35)]
+columns = [f"t{i}" for i in range(15)]
+columns_stg1 = [f"t{i}" for i in range(0, 3)]   # 0-35
+columns_stg2 = [f"t{i}" for i in range(3, 8)]   # 36-95
+columns_stg3 = [f"t{i}" for i in range(8, 10)]  # 96-119
+columns_stg4 = [f"t{i}" for i in range(10, 15)] # 120-179
 #%%
 # (vew == temporal) by the way.
 for file in os.listdir(root_vew):
@@ -274,11 +274,11 @@ for file in os.listdir(root_vew):
     # Load data
     df = pd.read_parquet(path_file)
     df = pd.merge(df, df_rice_code, on="BREED_CODE", how="left")
-    
+
     # Some cleaning
     df = df[df["in_season_rice_f"] == 1]
     df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-    df = convert_power_to_db(df, columns_large)
+    df = convert_power_to_db(df, columns)
     
     # Find shard drop for 
     df = assign_sharp_drop(df, columns_stg=columns_stg1[1:], label="nrt_stg1") # Have to skip "t0"
