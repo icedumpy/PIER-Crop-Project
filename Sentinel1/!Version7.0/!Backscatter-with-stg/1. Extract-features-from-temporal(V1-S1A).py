@@ -89,9 +89,9 @@ def assign_sharp_drop(df, columns_stg, label):
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
         # Find which "period" (1 or 2) gives min(diff+backscatter)
-        periods = int(np.argmin([
-            (df_grp[columns].diff(periods=1, axis=1)+df_grp[columns]).min(axis=1).min(),
-            (df_grp[columns].diff(periods=2, axis=1)+df_grp[columns]).min(axis=1).min(),
+        periods = int(np.nanargmin([
+            (df_grp[columns_stg].diff(periods=1, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
+            (df_grp[columns_stg].diff(periods=2, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
         ])+1)
         
         # Find which column
@@ -110,13 +110,13 @@ def assign_sharp_drop(df, columns_stg, label):
         df_grp[f"drop_column_{label}"] = f"t{flood_column}"
         
         # Extract data (-2, +2)
-        df_grp[[f"bc(t-2)_{label}", f"bc(t-1)_{label}", f"bc(t)_{label}", f"bc(t+1)_{label}", f"bc(t+2)_{label}"]] = df_grp[[f"t{i}" for i in range(flood_column-2, flood_column+3)]].values
+        df_grp[[f"bc(t-1)_{label}", f"bc(t)_{label}", f"bc(t+1)_{label}"]] = df_grp[[f"t{i}" for i in range(flood_column-1, flood_column+2)]].values
         
         # Background columns (before flood)
-        if columns_stg == ['t0', 't1', 't2', 't3', 't4', 't5', 't6']:
-            columns_background = [f"t{i}" for i in range(0 , 7 )]
+        if columns_stg == ['t0', 't1', 't2']:
+            columns_background = [f"t{i}" for i in range(0, 3)]
         else:
-            columns_background = [f"t{i}" for i in range(max(0, flood_column-10), flood_column-1)]
+            columns_background = [f"t{i}" for i in range(max(0, flood_column-6), flood_column-1)]
         df_grp[f"background_bc_{label}"] = df_grp[columns_background].median(axis=1)
 
         # Background - bc

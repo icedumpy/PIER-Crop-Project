@@ -437,7 +437,7 @@ df_tambon_test  = df_tambon[df_tambon["tambon_pcode"].isin(df_list_test)]
 columns_training_feature = [column for column in df_tambon.columns if column.startswith("x_")]
 df_tambon_train = pd.concat(SMOTE(sampling_strategy="minority", random_state=42).fit_resample(df_tambon_train[columns_training_feature], df_tambon_train["y"]), axis=1)
 #%%
-n_trials = 20
+n_trials = 2
 criteria = "f1"
 list_report_main = []
 #%%
@@ -649,6 +649,7 @@ print(features_main_modis)
 # (1&2&3&4&5&6) NDVI conclusion
 # =============================================================================
 features_main = list(dict.fromkeys(features_main_hls+features_main_modis))
+
 #%%
 # =============================================================================
 # 7. DRI (Extreme)

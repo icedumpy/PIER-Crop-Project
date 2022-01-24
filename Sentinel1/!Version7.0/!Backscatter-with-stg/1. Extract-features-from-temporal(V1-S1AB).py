@@ -87,7 +87,7 @@ def assign_sharp_drop(df, columns_stg, label):
     list_df = []
     for ext_act_id, df_grp in tqdm(df.groupby("ext_act_id")):
         # Find which "period" (1, 2, or 3) gives min(diff+backscatter)
-        periods = int(np.argmin([
+        periods = int(np.nanargmin([
             (df_grp[columns_stg].diff(periods=1, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
             (df_grp[columns_stg].diff(periods=2, axis=1)+df_grp[columns_stg]).min(axis=1).min(),
             (df_grp[columns_stg].diff(periods=3, axis=1)+df_grp[columns_stg]).min(axis=1).min()
