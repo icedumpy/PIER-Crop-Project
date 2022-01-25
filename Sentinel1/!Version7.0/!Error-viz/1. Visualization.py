@@ -63,3 +63,71 @@ for file in os.listdir(root_p_tee):
     # Save gdf
     df.to_file(path_save)
 #%%
+root_tai = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\Error\100k test"
+for file in os.listdir(root_tai):
+    print(file)
+    path_save = os.path.join(root_save, file.replace(".csv", ".shp"))
+    if os.path.exists(path_save):
+        continue
+    
+    path = os.path.join(root_tai, file)
+    df_tai = pd.read_csv(path).iloc[:, 1:]
+    df_tai = df_tai.rename(columns={"index_id":"ext_act_id", "predict":"y_pred"})
+    
+    # Merge 
+    df_tai = pd.merge(df_tai, df[["ext_act_id", "y_act"]], how="left", on="ext_act_id")
+    
+    # Merge polygon 
+    df_tai = pd.merge(df_tai, gdf, how="left", on="ext_act_id")
+    df_tai = gpd.GeoDataFrame(df_tai)
+    
+    # Assign result type
+    df_tai.loc[(df_tai["y_pred"] == 0) & (df_tai["y_act"] == 0), "resul_type"] = 1
+    df_tai.loc[(df_tai["y_pred"] == 1) & (df_tai["y_act"] == 1), "resul_type"] = 2
+    df_tai.loc[(df_tai["y_pred"] == 2) & (df_tai["y_act"] == 2), "resul_type"] = 3
+    df_tai.loc[df_tai["resul_type"] == 1, "[Pred Act]"] = "1:[0 0]"
+    df_tai.loc[df_tai["resul_type"] == 2, "[Pred Act]"] = "2:[1 1]"
+    df_tai.loc[df_tai["resul_type"] == 3, "[Pred Act]"] = "3:[2 2]"
+    
+    # Error type: Over (pred-act)
+    # 4: 2-0
+    # 5: 1-0
+    # 6: 2-1
+    df_tai.loc[(df_tai["y_pred"] == 2) & (df_tai["y_act"] == 0), "resul_type"] = 4
+    df_tai.loc[(df_tai["y_pred"] == 1) & (df_tai["y_act"] == 0), "resul_type"] = 5
+    df_tai.loc[(df["y_pred"] == 2) & (df_tai["y_act"] == 1), "resul_type"] = 6
+    df_tai.loc[df_tai["resul_type"] == 4, "[Pred Act]"] = "4:[2 0]"
+    df_tai.loc[df_tai["resul_type"] == 5, "[Pred Act]"] = "5:[1 0]"
+    df_tai.loc[df_tai["resul_type"] == 6, "[Pred Act]"] = "6:[2 1]"
+    
+    # Error type: Under (pred-act)
+    # 7: 0-2
+    # 8: 0-1
+    # 9: 1-2
+    df_tai.loc[(df_tai["y_pred"] == 0) & (df_tai["y_act"] == 2), "resul_type"] = 7
+    df_tai.loc[(df_tai["y_pred"] == 0) & (df_tai["y_act"] == 1), "resul_type"] = 8
+    df_tai.loc[(df_tai["y_pred"] == 1) & (df_tai["y_act"] == 2), "resul_type"] = 9
+    df_tai.loc[df_tai["resul_type"] == 7, "[Pred Act]"] = "7:[0 2]"
+    df_tai.loc[df_tai["resul_type"] == 8, "[Pred Act]"] = "8:[0 1]"
+    df_tai.loc[df_tai["resul_type"] == 9, "[Pred Act]"] = "9:[1 2]"
+    
+    # Save gdf
+    df_tai.to_file(path_save)
+    break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
