@@ -66,15 +66,11 @@ for file in os.listdir(root_p_tee):
         df_grp.to_file(path_save)
 #%%
 root_tai = r"F:\CROP-PIER\CROP-WORK\20211207-PIERxDA-batch_3c-NE3\Error\100k test"
-for file in os.listdir(root_tai):
+for file in [file for file in os.listdir(root_tai) if file.endswith(".parquet")]:
     print(file)
     
     path = os.path.join(root_tai, file)
-    df_tai = pd.read_csv(path).iloc[:, 1:]
-    df_tai = df_tai.rename(columns={"index_id":"ext_act_id", "predict":"y_pred"})
-    
-    # Merge 
-    df_tai = pd.merge(df_tai, df[["ext_act_id", "y_act"]], how="left", on="ext_act_id")
+    df_tai = pd.read_parquet(path)
     
     # Merge polygon 
     df_tai = pd.merge(df_tai, gdf, how="left", on="ext_act_id")
@@ -94,7 +90,7 @@ for file in os.listdir(root_tai):
     # 6: 2-1
     df_tai.loc[(df_tai["y_pred"] == 2) & (df_tai["y_act"] == 0), "resul_type"] = 4
     df_tai.loc[(df_tai["y_pred"] == 1) & (df_tai["y_act"] == 0), "resul_type"] = 5
-    df_tai.loc[(df["y_pred"] == 2) & (df_tai["y_act"] == 1), "resul_type"] = 6
+    df_tai.loc[(df_tai["y_pred"] == 2) & (df_tai["y_act"] == 1), "resul_type"] = 6
     df_tai.loc[df_tai["resul_type"] == 4, "[Pred Act]"] = "4:[2 0]"
     df_tai.loc[df_tai["resul_type"] == 5, "[Pred Act]"] = "5:[1 0]"
     df_tai.loc[df_tai["resul_type"] == 6, "[Pred Act]"] = "6:[2 1]"
@@ -111,7 +107,7 @@ for file in os.listdir(root_tai):
     df_tai.loc[df_tai["resul_type"] == 9, "[Pred Act]"] = "9:[1 2]"
     
     # Groupby year and save
-    for year, df_grp in df.groupby("plant_year"):
-        path_save = os.path.join(root_save, str(year), file.replace(".csv", f"_{year}.shp"))
+    for year, df_grp in df_tai.groupby("plant_year"):
+        path_save = os.path.join(root_save, str(year), file.replace(".parquet", f"_{year}.shp"))
         os.makedirs(os.path.dirname(path_save), exist_ok=True)
         df_grp.to_file(path_save)

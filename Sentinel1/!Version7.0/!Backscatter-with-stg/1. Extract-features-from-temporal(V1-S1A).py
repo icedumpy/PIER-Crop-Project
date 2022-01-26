@@ -270,6 +270,8 @@ for file in os.listdir(root_vew):
     print(file)
     path_file = os.path.join(root_vew, file)
     path_save = os.path.join(root_save, file.replace("temporal", "version_for_nrt"))
+    if os.path.exists(path_save):
+        continue
     
     # Load data
     df = pd.read_parquet(path_file)
