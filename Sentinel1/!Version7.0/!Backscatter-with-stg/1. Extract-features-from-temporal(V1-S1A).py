@@ -256,7 +256,7 @@ columns_stg3 = [f"t{i}" for i in range(8, 10)]  # 96-119
 columns_stg4 = [f"t{i}" for i in range(10, 15)] # 120-179
 #%%
 # (vew == temporal) by the way.
-for file in os.listdir(root_vew)[2::3]:
+for file in os.listdir(root_vew)[0::3]:
     for year in [2017, 2018, 2019, 2020]:
         print(file, year)
         path_file = os.path.join(root_vew, file)
@@ -277,6 +277,9 @@ for file in os.listdir(root_vew)[2::3]:
         except:
             continue
         
+        if len(df) == 0:
+            continue
+        
         # Find shard drop for
         df = assign_sharp_drop(df, columns_stg=columns_stg1[1:], label="nrt_stg1") # Have to skip "t0"
         df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2, label="nrt_stg2") # Have to skip "t0"
@@ -289,13 +292,6 @@ for file in os.listdir(root_vew)[2::3]:
         # Save file
         df_plot.to_parquet(path_save)
 #%%
-    
-    
-    
-    
-    
-    
-    
     
     
     

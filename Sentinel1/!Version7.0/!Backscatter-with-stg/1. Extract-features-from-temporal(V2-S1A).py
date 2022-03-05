@@ -198,6 +198,6 @@ for idx, file_info in df_info.iterrows():
     df_stg = pd.concat([df_stg1, df_stg2.iloc[:, 34:], df_stg3.iloc[:, 34:], df_stg4.iloc[:, 34:]], axis=1)
     
     # Save file
-    if len(df) != 0:
+    if len(df_stg) != 0:
         df_stg.to_parquet(path_save)
 #%%

@@ -45,7 +45,7 @@ for strip_id in np.unique([file.split(".")[0][-3:] for file in os.listdir(root_d
     df_gistda_flood.columns = df_gistda_flood.columns[:7].tolist()+df_gistda_flood.columns[7:].str.slice(0, 8).tolist()
     df_gistda_flood = set_index_for_loc(df_gistda_flood, column="ext_act_id")
     # Loop for each p_code
-    for p_code in df_gistda_flood.p_code.unique()[1::2]:
+    for p_code in df_gistda_flood.p_code.unique()[0:2]:
         # Load df_vew
         df_vew = pd.concat([pd.read_parquet(os.path.join(root_df_vew, file)) for file in os.listdir(root_df_vew) if file.split(".")[0].split("_")[-2][1:] in [p_code]], ignore_index=True)
         df_vew = df_vew.assign(loss_ratio = np.where(pd.isna(df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']).values, 0, df_vew['TOTAL_DANGER_AREA_IN_WA']/df_vew['TOTAL_ACTUAL_PLANT_AREA_IN_WA']))
