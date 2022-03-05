@@ -4,8 +4,8 @@ import datetime
 import rasterio
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 import geopandas as gpd
-import matplotlib.pyplot as plt
 from rasterio.mask import mask
 from icedumpy.df_tools import set_index_for_loc
 from icedumpy.geo_tools import gdal_rasterize, create_vrt, create_tiff
@@ -55,11 +55,14 @@ for row in df_date_range.itertuples(index=False):
         df_file.loc[(df_file["date"] >= row[0]) & (df_file["date"] <= row[1]), "last_date"] = row[1]
         group_number+=1
 #%% Main
-for group_number, df_grp in df_file.groupby("group_number"):
+for group_number, df_grp in tqdm(df_file.groupby("group_number")):
     print(group_number)
     # Loop for each gistda file
     for index, row in df_grp.iterrows():
-        gdf = gpd.read_file(row["path"])
+        try:
+            gdf = gpd.read_file(row["path"])
+        except:
+            continue 
         
         # Check if gistda flood is within each strip_id
         for _, strip in df_sen1a_index.iterrows():
@@ -120,7 +123,12 @@ for group_number, df_grp in df_file.groupby("group_number"):
         )
     
     # Clear all temp files
-    del raster, raster_img
+    try:
+        del raster, raster_img
+    except Exception as e:
+        print(e)
+        continue
+    
     for file in os.listdir(root_temp):
         try:
             os.remove(os.path.join(root_temp, file))

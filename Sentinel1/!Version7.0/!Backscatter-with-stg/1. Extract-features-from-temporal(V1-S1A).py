@@ -163,11 +163,11 @@ def convert_pixel_level_to_plot_level(df):
             drop_bc_p25 = df_grp[f"drop+bc_{stg}"].quantile(0.25)
             drop_bc_p50 = df_grp[f"drop+bc_{stg}"].quantile(0.50)
             drop_bc_p75 = df_grp[f"drop+bc_{stg}"].quantile(0.75)
-            bc_min = df_grp[[f"bc(t-2)_{stg}", f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}", f"bc(t+2)_{stg}"]].min(axis=0).values
-            bc_max = df_grp[[f"bc(t-2)_{stg}", f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}", f"bc(t+2)_{stg}"]].max(axis=0).values
-            bc_p25 = df_grp[[f"bc(t-2)_{stg}", f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}", f"bc(t+2)_{stg}"]].quantile(0.25, axis=0).values
-            bc_p50 = df_grp[[f"bc(t-2)_{stg}", f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}", f"bc(t+2)_{stg}"]].quantile(0.50, axis=0).values
-            bc_p75 = df_grp[[f"bc(t-2)_{stg}", f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}", f"bc(t+2)_{stg}"]].quantile(0.75, axis=0).values
+            bc_min = df_grp[[f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}"]].min(axis=0).values
+            bc_max = df_grp[[f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}"]].max(axis=0).values
+            bc_p25 = df_grp[[f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}"]].quantile(0.25, axis=0).values
+            bc_p50 = df_grp[[f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}"]].quantile(0.50, axis=0).values
+            bc_p75 = df_grp[[f"bc(t-1)_{stg}", f"bc(t)_{stg}", f"bc(t+1)_{stg}"]].quantile(0.75, axis=0).values
             background_bc_min = df_grp[f"background_bc_{stg}"].min()
             background_bc_max = df_grp[f"background_bc_{stg}"].max()
             background_bc_p25 = df_grp[f"background_bc_{stg}"].quantile(0.25)
@@ -202,31 +202,21 @@ def convert_pixel_level_to_plot_level(df):
                 f"drop+bc_p25_{stg}":drop_bc_p25,
                 f"drop+bc_p50_{stg}":drop_bc_p50,
                 f"drop+bc_p75_{stg}":drop_bc_p75,
-                f"bc(t-2)_min_{stg}":bc_min[0],
-                f"bc(t-1)_min_{stg}":bc_min[1],
-                f"bc(t)_min_{stg}"  :bc_min[2],
-                f"bc(t+1)_min_{stg}":bc_min[3],
-                f"bc(t+2)_min_{stg}":bc_min[4],
-                f"bc(t-2)_max_{stg}":bc_max[0],
-                f"bc(t-1)_max_{stg}":bc_max[1],
-                f"bc(t)_max_{stg}"  :bc_max[2],
-                f"bc(t+1)_max_{stg}":bc_max[3],
-                f"bc(t+2)_max_{stg}":bc_max[4],
-                f"bc(t-2)_p25_{stg}":bc_p25[0],
-                f"bc(t-1)_p25_{stg}":bc_p25[1],
-                f"bc(t)_p25_{stg}"  :bc_p25[2],
-                f"bc(t+1)_p25_{stg}":bc_p25[3],
-                f"bc(t+2)_p25_{stg}":bc_p25[4],
-                f"bc(t-2)_p50_{stg}":bc_p50[0],
-                f"bc(t-1)_p50_{stg}":bc_p50[1],
-                f"bc(t)_p50_{stg}"  :bc_p50[2],
-                f"bc(t+1)_p50_{stg}":bc_p50[3],
-                f"bc(t+2)_p50_{stg}":bc_p50[4],
-                f"bc(t-2)_p75_{stg}":bc_p75[0],
-                f"bc(t-1)_p75_{stg}":bc_p75[1],        
-                f"bc(t)_p75_{stg}"  :bc_p75[2],
-                f"bc(t+1)_p75_{stg}":bc_p75[3],
-                f"bc(t+2)_p75_{stg}":bc_p75[4],
+                f"bc(t-1)_min_{stg}":bc_min[0],
+                f"bc(t)_min_{stg}"  :bc_min[1],
+                f"bc(t+1)_min_{stg}":bc_min[2],
+                f"bc(t-1)_max_{stg}":bc_max[0],
+                f"bc(t)_max_{stg}"  :bc_max[1],
+                f"bc(t+1)_max_{stg}":bc_max[2],
+                f"bc(t-1)_p25_{stg}":bc_p25[0],
+                f"bc(t)_p25_{stg}"  :bc_p25[1],
+                f"bc(t+1)_p25_{stg}":bc_p25[2],
+                f"bc(t-1)_p50_{stg}":bc_p50[0],
+                f"bc(t)_p50_{stg}"  :bc_p50[1],
+                f"bc(t+1)_p50_{stg}":bc_p50[2],
+                f"bc(t-1)_p75_{stg}":bc_p75[0],        
+                f"bc(t)_p75_{stg}"  :bc_p75[1],
+                f"bc(t+1)_p75_{stg}":bc_p75[2],
                 f"background_bc_min_{stg}":background_bc_min,
                 f"background_bc_max_{stg}":background_bc_max,
                 f"background_bc_p25_{stg}":background_bc_p25,
@@ -266,32 +256,61 @@ columns_stg3 = [f"t{i}" for i in range(8, 10)]  # 96-119
 columns_stg4 = [f"t{i}" for i in range(10, 15)] # 120-179
 #%%
 # (vew == temporal) by the way.
-for file in os.listdir(root_vew):
-    print(file)
-    path_file = os.path.join(root_vew, file)
-    path_save = os.path.join(root_save, file.replace("temporal", "version_for_nrt"))
-    if os.path.exists(path_save):
-        continue
-    
-    # Load data
-    df = pd.read_parquet(path_file)
-    df = pd.merge(df, df_rice_code, on="BREED_CODE", how="left")
-
-    # Some cleaning
-    df = df[df["in_season_rice_f"] == 1]
-    df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
-    df = convert_power_to_db(df, columns)
-    
-    # Find shard drop for 
-    df = assign_sharp_drop(df, columns_stg=columns_stg1[1:], label="nrt_stg1") # Have to skip "t0"
-    df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2, label="nrt_stg2") # Have to skip "t0"
-    df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2+columns_stg3, label="nrt_stg3") # Have to skip "t0"
-    df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2+columns_stg3+columns_stg4, label="nrt_stg4") # Have to skip "t0"
-    
-    # Convert from pixel-level to plot-level
-    df_plot = convert_pixel_level_to_plot_level(df)
-    
-    # Save file
-    df_plot.to_parquet(path_save)
+for file in os.listdir(root_vew)[2::3]:
+    for year in [2017, 2018, 2019, 2020]:
+        print(file, year)
+        path_file = os.path.join(root_vew, file)
+        path_save = os.path.join(root_save, file.replace("temporal", f"version_for_nrt_y{year}"))
+        if os.path.exists(path_save):
+            continue
+        
+        try:
+            # Load data
+            df = pd.read_parquet(path_file)
+            df = df[df.final_plant_year == year] # Filter by year
+            df = pd.merge(df, df_rice_code, on="BREED_CODE", how="left")
+        
+            # Some cleaning
+            df = df[df["in_season_rice_f"] == 1]
+            df = df[(df["loss_ratio"] >= 0) & (df["loss_ratio"] <= 1)]
+            df = convert_power_to_db(df, columns)
+        except:
+            continue
+        
+        # Find shard drop for
+        df = assign_sharp_drop(df, columns_stg=columns_stg1[1:], label="nrt_stg1") # Have to skip "t0"
+        df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2, label="nrt_stg2") # Have to skip "t0"
+        df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2+columns_stg3, label="nrt_stg3") # Have to skip "t0"
+        df = assign_sharp_drop(df, columns_stg=columns_stg1[1:]+columns_stg2+columns_stg3+columns_stg4, label="nrt_stg4") # Have to skip "t0"
+        
+        # Convert from pixel-level to plot-level
+        df_plot = convert_pixel_level_to_plot_level(df)
+        
+        # Save file
+        df_plot.to_parquet(path_save)
 #%%
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

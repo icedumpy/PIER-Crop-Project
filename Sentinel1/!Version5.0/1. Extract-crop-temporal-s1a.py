@@ -82,7 +82,8 @@ dict_dtypes = {
 #%%
 list_strip_id = ["101", "102", "103", "104", "105", "106", "107", "108", "109", 
                  "201", "202", "203", "204", "205", "206", "207", "208",
-                 "301"]
+                 "301", "302", "303", "304", "305", "306", 
+                 "401", "402", "403"]
 for strip_id in list_strip_id:
     # Load df mapping
     df_mapping, _ = load_mapping(root_df_mapping, strip_id=strip_id)
