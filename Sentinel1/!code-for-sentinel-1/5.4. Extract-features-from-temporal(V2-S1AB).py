@@ -168,7 +168,9 @@ def extract_features(df, columns, label):
     df = pd.DataFrame(list_data)
     return df
 #%%
+# Temporal จาก 4.2
 root_temporal = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+# Save ที่ใด
 root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1ab_intensity_features_nrt"
 os.makedirs(root_save, exist_ok=True)
 #%%

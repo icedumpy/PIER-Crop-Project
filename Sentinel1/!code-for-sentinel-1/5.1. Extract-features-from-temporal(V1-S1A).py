@@ -239,8 +239,11 @@ def get_threshold_of_selected_fpr(fpr, thresholds, selected_fpr):
     index = np.argmin(np.abs(fpr - selected_fpr))
     return thresholds[index]
 #%%
+# Temporal จาก 4.1
 root_vew = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_temporal(at-False)"
+# Save ที่ใด
 root_save = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1a_vew_plant_info_official_polygon_disaster_all_rice_by_year_version_for_nrt(at-False)"
+# csv rice info
 path_rice_code = r"F:\CROP-PIER\CROP-WORK\rice_age_from_rice_department.csv"
 # Load df rice code
 df_rice_code = pd.read_csv(path_rice_code, encoding='cp874')
