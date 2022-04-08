@@ -9,6 +9,8 @@ import geopandas as gpd
 import rasterio
 from tqdm import tqdm
 from rasterio.mask import mask
+
+# pip install git+https://github.com/icedumpy/icedumpy.git 
 from icedumpy.df_tools import load_vew
 from icedumpy.geo_tools import create_polygon_from_wkt, create_vrt, create_tiff
 #%% Import functions
@@ -53,15 +55,50 @@ def get_pixel_location_from_coords(x, y, geotransform):
     pixel_y = int(np.floor(pixel_y))
     return pixel_x, pixel_y # col, row
 #%% Define parameters
+# Folder ที่มีไฟล์ raster ของ sentinel-1
 root_raster = r"G:\!PIER\!FROM_2TB\Complete_VV_separate"
+# S1A
+#     - 101
+#         - LSVVS101_2017-05-03
+#         - ...
+#         - LSVVS101_2022-01-25
+#     - 102
+#         - ...
+#     - ...
+#     - 403
+# S1B
+#     - 302
+#     - ...
+#     - 403
+
+# Folder valid mask ของ sentinel-1 เป็นภาพ raster ที่มีค่า 1 บริเวณที่มีข้อมูล (ไม่ใช่ขอบรูป)
 root_raster_valid_mask = r"G:\!PIER\!FROM_2TB\s1_valid_mask"
+# s1_valid_mask_101
+# s1_valid_mask_102
+# ...
+# s1_valid_mask_403
+
+# Folder เก็บ row col raster ของแต่ละ scene
 root_raster_rowcol = r"G:\!PIER\!FROM_2TB\s1_pixel_rowcol_map"
+# s1_pixel_col_map_101
+# s1_pixel_col_map_102
+# ...
+# s1_pixel_col_map_403
+# s1_pixel_row_map_101
+# s1_pixel_row_map_102
+# ...
+# s1_pixel_row_map_403
+
+# Folder เก็บ df_vew ที่มาจากพี่ตี๋ 
 root_df_vew = r"F:\CROP-PIER\CROP-WORK\vew_plant_info_official_polygon_disaster_all_rice_by_year"
+
+# เอาไว้เลือกที่เซฟ
 root_df_mapping_atTrue = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_polygon_id_rowcol_map_prov_scene_v3(at-True)"
 root_df_mapping_atFalse = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_vew_plant_info_official_polygon_disaster_all_rice_by_year_mapping(at-False)"
+
+# Shapefile ประเทศไทย
 path_gdf_provinces = r"F:\CROP-PIER\CROP-WORK\!common_shapefiles\thailand\thailand-province.shp"
 os.makedirs(root_df_mapping_atFalse, exist_ok=True)
-
 gdf_provinces = gpd.read_file(path_gdf_provinces)
     #%%
 # list_strip_id = ["302", "303", "304", "305", "306", "401", "402", "403"]

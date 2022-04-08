@@ -19,7 +19,7 @@ root_df_mapping = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\s1_vew_pl
 # ที่ stack จาก 1.3.stack-rasters.py
 root_raster = os.path.join(r"C:\Users\PongporC\Desktop\temp", sat_type.upper())
 
-# ที่จะเซฟ
+# ที่จะเซฟ อันนี้ extract pixel values ของแต่ละ row col ที่เป็นข้าว แยก scene แยก จังหวัด
 root_save = rf"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\{sat_type.lower()}_vew_plant_info_official_polygon_disaster_all_rice_by_year_pixel(at-False)"
 os.makedirs(root_save, exist_ok=True)
 #%%
