@@ -1,4 +1,26 @@
 ## Codes for sentinel-1 ครัช
 
 - 1.1.separate-complete-vv.py
-- - icelnw
+    - เอา raster ที่ได้มาจาก gistda (ที่เค้า stack มาให้เรียบร้อย) มาแตกออกเป็นไฟล์ย่อยๆ
+- 1.2.create-row-col-raster
+    - เอา raster จาก 1.1 มาสร้าง row raster, col raster เอาไว้ใช้ตอนทำ mapping
+- 1.3.stack-rasters.py
+    - เอา raster จาก 1.1 แล้วก็ที่ download เพิ่มจาก google drive มา stack กันใหม่ เพื่อใช้ใน steps ต่อๆไป
+- 2.create-mapping.py
+    - สร้าง dataframe row col mapping ของแต่ละ activity id
+- 3.1.extract-pixel-values-using-mapping.py
+    - extract pixel values ของทุก pixel ที่เป็นแปลงข้าว (ทุกช่วงเวลา)
+- 3.2.update-pixel-values.py
+    - อันนี้เอาไว้ update 3.1 เผื่อมีต่อๆไป มี activity ใหม่มาเพิ่ม จะได้ไม่ต้องรันเยอะ
+- 4.1.extract-crop-temporal-s1a.py
+    - S1A: Extract crop temporal (เริ่มปลูก -> 180วัน หลังปลูก ของแต่ละ activity)
+- 4.2.extract-crop-temporal-s1ab.py
+    - S1AB: Extract crop temporal (เริ่มปลูก -> 180วัน หลังปลูก ของแต่ละ activity)
+- 5.1.Extract-features-from-temporal(V1-S1A).py & 5.2.Extract-features-from-temporal(V1-S1AB).py
+    - Extract features จาก temporal (4.1 or 4.2) Version 1
+        - Sharp drop
+        - Background 
+        - Background - min(backscatter)
+- 5.3.Extract-features-from-temporal(V2-S1A).py & 5.4.Extract-features-from-temporal(V2-S1AB).py
+    - Extract features จาก temporal (4.1 or 4.2) Version 2
+        - พวก features ที่ใช้ backscatter threshold หลายๆค่ามาดูว่า แปลงนี้มี ratio กี่ % ที่ท่วมเกิน x วัน
