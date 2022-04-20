@@ -18,10 +18,10 @@ root_temp = r"C:\Users\PongporC\Desktop\temp\Flood-map"
 
 # เอาไว้เซฟ Rasterized gistda flood shapefiles
 root_final = r"F:\CROP-PIER\CROP-WORK\GISTDA-Flood\Rasterized"
-# Valid mask
+# Valid mask (น่าจะได้จากตอนเตรียม sentinel-1 และ ไฟล์น่าจะค้างไว้ แต่ถ้ายังไม่มี รู้สึกว่าต้องลองรันโค้ดพวกเตรียม sentinel-1 ก่อน)
 root_raster_temp = r"G:\!PIER\!FROM_2TB\s1_valid_mask"
 
-# เดี๋ยวต้อง provide ให้
+# เดี๋ยวต้อง provide ให้ (สองไฟล์นี้ อยู่ในโฟล์เดอร์โค้ดเลย)
 path_sen1a_template = r"F:\CROP-PIER\CROP-WORK\Sentinel1_dataframe_updated\sen1a_strip_id_template.parquet"
 path_sen1a_index = r"F:\CROP-PIER\COPY-FROM-PIER\Sentinel1A_Index\Sentinel1_Index_4326.shp"
 
